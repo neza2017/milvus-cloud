@@ -116,11 +116,13 @@ Yes，详见 `SLA`
 Yes
 
 数据备份： https://docs.atlas.mongodb.com/backup-restore-cluster/#backup-methods
+
 `M2/M5`采用快照备份
 
 ![](mongodb-atlas/M2-5-snapshots.png)
 
 `M10`以上使用云平台的`snapshot`备份
+
 ![](mongodb-atlas/M10-backup.png)
 
 数据恢复： 
