@@ -59,16 +59,11 @@ https://www.mongodb.com/cloud/atlas/sla
 ---
 
 ## Competition (02 Medium)
-`AWS` 提供在 `VPC(virtual private cloud)` 上部署 `MongoDB` 选项 : https://docs.aws.amazon.com/quickstart/latest/mongodb/welcome.html
+`MongoDB` 的 `SSPL` 协议要求云厂商直接提供 `MongoDB`服务时需要取得商业许可证
 
+`AWS` 提供 兼容 `MongoDB` 协议的 `DocumentDB`
 
-
-
-`GPC` 直接和 `MongoDB`合作 : https://cloud.google.com/mongodb
-
-![](mongodb-atlas/mongodb-gcp.png)
-
-进去之后的页面和直接从官网进的页面一样
+![](mongodb-atlas/aws-documentdb.png)
 
 
 ---
