@@ -65,6 +65,13 @@ https://www.mongodb.com/cloud/atlas/sla
 
 ![](mongodb-atlas/aws-documentdb.png)
 
+阿里云提供兼容 `MongoDB` 协议的云数据库MongoDB版 : https://help.aliyun.com/document_detail/26558.html
+
+![](mongodb-atlas/aliyun-mongodb.png)
+
+腾讯云数据库 MongoDB（TencentDB for MongoDB）: https://cloud.tencent.com/product/mongodb
+
+![](mongodb-atlas/tencentdb-mongodb.png)
 
 ---
 
