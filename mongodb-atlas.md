@@ -1,6 +1,6 @@
 # MongoDB Atlas
-## Paper
-n/a
+## Paper (01 High)
+TODO
 
 ---
 ## Independent Entrance
@@ -14,7 +14,10 @@ n/a
 ---
 
 ## Infra dependency
-No
+不依赖云平台，但是提供额外的直接从 `S3` 查询的功能
+
+![](mongodb-atlas/data-lake.png)
+
 
 ---
 
@@ -27,7 +30,7 @@ https://www.mongodb.com/cloud/atlas/sla
 ---
 
 ## Product package
-TODO
+该部分在下文详细介绍，包括 `HA`、`DR`、`User Management`等
 
 ---
 
@@ -50,12 +53,12 @@ TODO
 ---
 
 ## 7x24 Support
-支持 7x24 小时，但是要收费
+提供 7x24 小时支持，但是要收费
 ![](mongodb-atlas/support-plan.png)
 
 ---
 
-## Competition
+## Competition (02 Medium)
 
 TODO
 
@@ -166,6 +169,6 @@ TODO
 
 ---
 
-## Regulation/Compliance
+## Regulation/Compliance (01 High)
 TODO
 
