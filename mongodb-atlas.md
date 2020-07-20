@@ -59,8 +59,17 @@ https://www.mongodb.com/cloud/atlas/sla
 ---
 
 ## Competition (02 Medium)
+`AWS` 提供在 `VPC(virtual private cloud)` 上部署 `MongoDB` 选项 : https://docs.aws.amazon.com/quickstart/latest/mongodb/welcome.html
 
-TODO
+
+
+
+`GPC` 直接和 `MongoDB`合作 : https://cloud.google.com/mongodb
+
+![](mongodb-atlas/mongodb-gcp.png)
+
+进去之后的页面和直接从官网进的页面一样
+
 
 ---
 
