@@ -121,7 +121,7 @@ TODO
 
 ![](./spark/notebook-cluster.png)
 
-之后可以向本地使用 `notebook` 一样操作 `spark`
+之后可以像本地使用 `notebook` 一样操作 `spark`
 
 ![](./spark/spark-notebook.png)
 
