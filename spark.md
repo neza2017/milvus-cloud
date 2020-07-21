@@ -29,7 +29,7 @@ No
 ---
 
 ## SLA
-没找到 `Databricks` 的 `SLA` 协议，有 `Azure Databricks` 的 `SLA` 协议，但是是2018年3月的
+没找到 `Databricks` 的 `SLA` 协议，有 `Azure Databricks` 的 `SLA` 协议，是2018年3月的
 
 `Azure Databricks SLA` : https://azure.microsoft.com/en-us/support/legal/sla/databricks/v1_0/
 
