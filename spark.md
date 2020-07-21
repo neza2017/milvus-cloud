@@ -44,7 +44,7 @@ No
 ---
 
 ## Product package
-提供 `notebook` 的操作页面，同事整合了 `MLflow`
+提供 `notebook` 的操作页面，同时整合了 `MLflow`
 
 ![](./spark/spark-create.png)
 
@@ -78,7 +78,9 @@ https://databricks.com/product/pricing
 
 这里演示的是社区免费版本，所以只有一个 `Driver` 节点没有 `Worker` 也不能选择机器配置和数目
 
-这里演示 `Azure Databricks` 的使用： https://www.youtube.com/watch?v=M7t1T1Q5MNc，在这个演示中可以选择机器的配置及数目，不同的配置对应不同的 `DBU`
+这个视频演示了 `Azure Databricks` 的使用： https://www.youtube.com/watch?v=M7t1T1Q5MNc
+
+在这个演示中可以选择机器的配置及数目，不同的配置对应不同的 `DBU`
 
 ![](./spark/azure-databricks.png)
 
