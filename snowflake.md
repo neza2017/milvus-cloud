@@ -63,7 +63,7 @@ https://www.snowflake.com/pricing/
 ---
 
 ## 7x24 Support
-Yes, `Pricing model` 内包好了 `Premier Support 24x365`
+Yes, `Pricing model` 内包含了 `Premier Support 24x365`
 
 ---
 
