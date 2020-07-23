@@ -88,7 +88,7 @@ TODO
 
 除了网页登录, `snowflake` 还支持直接命令行直接登录: https://docs.snowflake.com/en/user-guide/snowsql.html#
 
-这只配置文件
+设置配置文件 `~/.snowsql/config`
 ```ini
 [connections.cyf]
 accountname = ck58372.ap-northeast-1.aws 
@@ -155,7 +155,128 @@ cyf#COMPUTE_WH@CITIBIKE.PUBLIC>select * from TRIPS limit 20;
 
 ```
 
-
-`ODBC`、`JDBC`、`Python` 等方式链接
+另外 `snowflake` 还支持 `ODBC`、`JDBC`、`Python` 等方式链接 : https://docs.snowflake.com/en/user-guide-connecting.html
 
 ![](./snowflake/snow-flake-odbc.png)
+
+---
+
+## Scale out
+Yes
+
+---
+
+## HA
+Yes
+
+---
+
+## DR
+`Snowflake`支持是 `Time Travel`的数据恢复 ，`Standar`支持 1 天的 `Time Travel`，其它的支持 90 天的 `Time Travel`
+
+误删无数据表格，恢复
+```sql
+drop table json_weather_data;
+
+Select * from json_weather_data limit 10;
+
+undrop table json_weather_data;
+```
+
+错误的修改数据，恢复
+```bash
+update trips set start_station_name = 'oops';
+
+select 
+start_station_name as "station",
+count(*) as "rides"
+from trips
+group by 1
+order by 2 desc
+limit 20;
+
+
+set query_id = 
+(select query_id from 
+table(information_schema.query_history_by_session (result_limit=>5)) 
+where query_text like 'update%' order by start_time limit 1);
+
+create or replace table trips as
+(select * from trips before (statement => $query_id));
+```
+
+
+
+## Scale up
+Yes，详见 `SLA`
+
+---
+
+## Serverless (03 low)
+TODO
+
+---
+
+## Disaggregated Storage and Compute Architecture (03 low)
+TODO 
+
+---
+
+## User Management
+
+支持标准 `sql` 的 `DDL` 和 `DML`: https://docs.snowflake.com/en/sql-reference-commands.html#
+
+一个 `account` 下可以创建多个 `user`
+```sql
+cyf#COMPUTE_WH@CITIBIKE.PUBLIC>use ROLE ACCOUNTADMIN;
++----------------------------------+                                            
+| status                           |
+|----------------------------------|
+| Statement executed successfully. |
++----------------------------------+
+1 Row(s) produced. Time Elapsed: 0.214s
+cyf#COMPUTE_WH@CITIBIKE.PUBLIC>create user zilliz PASSWORD='zilliz';
++-----------------------------------+                                           
+| status                            |
+|-----------------------------------|
+| User ZILLIZ successfully created. |
++-----------------------------------+
+1 Row(s) produced. Time Elapsed: 0.403s
+cyf#COMPUTE_WH@CITIBIKE.PUBLIC>show USERs;
++-----------+-------------------------------+------------+--------------+------------+-----------+----------------------+----------------+--------------------+---------+----------+----------------------+----------------+-------------------+-------------------+--------------+---------------+---------------+--------------------+--------------+-------------------------------+-------------------------------+-------------------+--------------+--------------------+
+| name      | created_on                    | login_name | display_name | first_name | last_name | email                | mins_to_unlock | days_to_expiry     | comment | disabled | must_change_password | snowflake_lock | default_warehouse | default_namespace | default_role | ext_authn_duo | ext_authn_uid | mins_to_bypass_mfa | owner        | last_success_login            | expires_at_time               | locked_until_time | has_password | has_rsa_public_key |
+|-----------+-------------------------------+------------+--------------+------------+-----------+----------------------+----------------+--------------------+---------+----------+----------------------+----------------+-------------------+-------------------+--------------+---------------+---------------+--------------------+--------------+-------------------------------+-------------------------------+-------------------+--------------+--------------------|
+| CYF       | 2020-07-22 23:11:28.700 -0700 | CYF        | CYF          | yefu       | chen      | yefu.chen@zilliz.com |                |                    |         | false    | false                | false          | COMPUTE_WH        |                   | SYSADMIN     | false         |               |                    | ACCOUNTADMIN | 2020-07-23 03:40:38.973 -0700 | NULL                          | NULL              | true         | false              |
+| SNOWFLAKE | 2020-07-22 23:11:28.722 -0700 | SNOWFLAKE  | SNOWFLAKE    |            |           |                      |                | 0.7948726851851852 |         | false    | false                | false          |                   |                   |              | false         |               |                    |              | 2020-07-22 23:11:35.324 -0700 | 2020-07-23 23:11:29.504 -0700 | NULL              | true         | false              |
+| ZILLIZ    | 2020-07-23 04:06:14.756 -0700 | ZILLIZ     | ZILLIZ       |            |           |                      |                |                    |         | false    | false                | false          |                   |                   |              | false         |               |                    | ACCOUNTADMIN | NULL                          | NULL                          | NULL              | true         | false              |
++-----------+-------------------------------+------------+--------------+------------+-----------+----------------------+----------------+--------------------+---------+----------+----------------------+----------------+-------------------+-------------------+--------------+---------------+---------------+--------------------+--------------+-------------------------------+-------------------------------+-------------------+--------------+--------------------+
+3 Row(s) produced. Time Elapsed: 0.210s
+cyf#COMPUTE_WH@CITIBIKE.PUBLIC>
+```
+以 `zilliz` 用户登录
+
+![](./snowflake/snow-flake-zilliz-account.png)
+
+## Load Data
+
+`snowflake` 数据导入时，需要先把数据上传平台上
+
+![](./snowflake/snow-flake-stage.png)
+
+根据云平台创建 `stage`
+
+![](./snowflake/snow-flake-stage-s3.png)
+
+从 `stage` 拷贝数据到 `snowflake`
+
+```sql
+copy into trips from @citibike_trips
+file_format=CSV;
+```
+
+
+
+---
+
+## Regulation/Compliance (01 High)
+TODO
