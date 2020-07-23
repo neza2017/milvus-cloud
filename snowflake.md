@@ -18,7 +18,7 @@ TODO
 ---
 
 ## Infra dependency
-不依赖云平台，但是提供额外的直接从 `S3` 查询的功能
+Yes
 
 ---
 
