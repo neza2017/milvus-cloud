@@ -274,8 +274,6 @@ copy into trips from @citibike_trips
 file_format=CSV;
 ```
 
-
-
 ---
 
 ## Regulation/Compliance (01 High)
