@@ -47,9 +47,11 @@
 ---
 
 ## 为什么不在 milvus cluster前端接入 kafka 做数据分发
-- kafka的高可用需要引入 zookeeper，这样需要3台机器做kafka，3台机器做zookeeper，太费钱
-- 在 milvus cluster前端接入 kafka 目前能看到的可以为后续的`数据统计`和`数据审计`解耦，这两个功能直接从 `kafka` 订阅消息
-- `数据统计`和`数据审计`也可以直接从 `storage` 读数据，也是和 `milvus` 解耦的
+- kafka的高可用需要引入 `zookeeper`，这样需要3台机器做`kafka`，3台机器做`zookeeper`，太费钱
+- 在 m`ilvus cluste`r前端接入 `kafka` 目前能看到的可以为后续的`数据统计`和`数据审计`解耦，这两个功能直接从 `kafka` 订阅消息
+- `数据统计`和`数据审计`也可以直接从 `storage` 读数据，也是和 milvus 解耦的
+- `kafka`是`scala`技术栈，对于当前公司的团队来说，存在运维难度
+- 如果后期确实需要加入`kafaka`，当前的设计框架也是容易加入的
 
 ---
 
@@ -58,27 +60,50 @@
 - 使用etcd存储meta
 - 删除 WAL
 - 删除自动flush
+- delete 操作也需要 flush才能生效
 - milvus cloud需要自动升级，那么milvus后续版本的数据格式必须向后兼容
 - 数据文件需要有校验
 - 增加与S3的交互接口，从S3加载数据，并将数据存入S3
+- milvus 的文件名需要包含 meta 信息，能够自解析生成 meta
 
 ---
 
 ## 为什么要删除当前 milvus 中的 WAL
-- WAL 应该是存储层面的事，数据库层面应该是 binlog，当前 milvus　的 WAL 即不属于传统存储的 WAL 也不属于数据库层面的　binlog，感觉怪怪的
+- `WAL` 应该是存储层面的事，数据库层面应该是 `binlog`，当前 milvus　的 `WAL` 即不属于传统存储的 `WAL` 也不属于数据库层面的　`binlog`，感觉怪怪的
 - 传统意义上的 `WAL` 和 `binlog` 关系如下图所示，用户插入数据A时，数据库首先将数据A写`binlog`，然后向用户客户端返回插入操作，此时对用户来说插入操作已经结束了，用户可以在通过`query`查询数据A；数据库后台程序将数据A先写入`WAL`，再写入持久化存储
 
 ![传统意义的WAL和binlog](./milvus-cloud/traditional-wal.jpg)
 
-- 当前 `milvus` 的 `WAL` 流程图如下所示，用户插入数据A时，数据库首先将数据A写`WAL`，然后向用户返回插入操作，对用户来说此时插入操作已经结束了，**`但是此时用户依然无法查询数据A，数据A必须在调用 flush 写入持久化存储后才能被用户查询`**
+- 当前 milvus 的 `WAL` 流程图如下所示，用户插入数据A时，数据库首先将数据A写`WAL`，然后向用户返回插入操作，对用户来说此时插入操作已经结束了，**`但是此时用户依然无法查询数据A，数据A必须在调用 flush 写入持久化存储后才能被用户查询`**
 
 ![mivlus的wal](./milvus-cloud/milvus-wal.jpg)
+- `S3`是只读，不允许向文件中追加内容，如果依然存在 `WAL`，就会导致一个插入操作，对应`S3`中的而一个文件，这个设计太傻了
+- 如果 `WAL` 不写入 `S3`，而是写入本地缓存，那么没法保证宕机后回复数据
 
 ---
 
 ## 为什么要删除自动 flush
+- 当前 milvus 数据插入流程是这样的：
+    - 用户调用 insert 接口插入数据
+    - 结合前一条删除`WAL`， 此处假设milvus 将数据写入内存，并向用户返回插入结束
+    - 但是此时不能保证用户一定查询刚刚写入的数据
+    - milvus 内置定时自动 `flush`
+    - 只有当数据被 `flush` 磁盘后，用户才能查询
+- 首先这个流程有个语义上的困惑， 在用户层面上以为插入已经接受，但是 milvus 并不保证用户一定能查询到刚刚插入的数据
+- 更重要的原因在于自动 `flush` 的 milvus 是有状态的，如果在 自动`flush` 过程中宕机则无法实现数据恢复，如下图所示，用户认为数据A和数据B均已进milvus，当时在宕机恢复后，用户只能有数据A没有数据B，数据B已经丢失了
+![插入宕机](./milvus-cloud/insert-example.jpg)
+- 结合 milvus 适合数据批量插入的使用场景，我们认为 `flush` 的语义应该是传统数据的 `commit`
+    - 用户必须手动调用 `flush`
+    - 只有在 `flush` 返回成功后，`flush` 之前的 `insert` 和 `delete` 操作才是有效的
+    - milvus 保证两个 `flush` 之间的 `insert` 和 `delete` 操作要么全部成功，那么全部失败
+- 删除 milvus 的 `WAL` 和 `自动flush` 是 milvus 实现计算和存储分离的重要步骤
+
+---
+
+## 文件名需要包含 meta 信息，能够自解析生成 meta
 - 
 
+---
 
 ## 计费模式?
 - 仿照 snowflake，storage和 milvus cluster单独收费
