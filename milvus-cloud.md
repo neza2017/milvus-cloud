@@ -48,7 +48,7 @@
 
 ## 为什么不在 milvus cluster前端接入 kafka 做数据分发
 - kafka的高可用需要引入 `zookeeper`，这样需要3台机器做`kafka`，3台机器做`zookeeper`，太费钱
-- 在 m`ilvus cluste`r前端接入 `kafka` 目前能看到的可以为后续的`数据统计`和`数据审计`解耦，这两个功能直接从 `kafka` 订阅消息
+- 在 milvus cluster 前端接入 `kafka` 目前能看到的可以为后续的`数据统计`和`数据审计`解耦，这两个功能直接从 `kafka` 订阅消息
 - `数据统计`和`数据审计`也可以直接从 `storage` 读数据，也是和 milvus 解耦的
 - `kafka`是`scala`技术栈，对于当前公司的团队来说，存在运维难度
 - 如果后期确实需要加入`kafaka`，当前的设计框架也是容易加入的
