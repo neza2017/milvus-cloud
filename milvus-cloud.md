@@ -44,7 +44,7 @@
 - reduce中，每个milvus实例拥有部分数据，针对超大数据集查询
 - load balance和reduce不能同时工作
 
---
+---
 
 ## 为什么不在 milvus cluster前端接入 kafka 做数据分发
 - kafka的高可用需要引入 zookeeper，这样需要3台机器做kafka，3台机器做zookeeper，太费钱
