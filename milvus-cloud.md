@@ -70,7 +70,7 @@
 
 ![传统意义的WAL和binlog](./milvus-cloud/traditional-wal.jpg)
 
-- 当前 `milvus` 的 `WAL` 流程图如下所示，用户插入数据A时，数据库首先将数据A写`WAL`，然后向用户返回插入操作，对用户来说此时插入操作已经结束了，<font color=red> 但是此时用户依然无法查询数据A，数据A必须在调用 flush 写入持久化存储后才能被用户查询</font>
+- 当前 `milvus` 的 `WAL` 流程图如下所示，用户插入数据A时，数据库首先将数据A写`WAL`，然后向用户返回插入操作，对用户来说此时插入操作已经结束了，**`但是此时用户依然无法查询数据A，数据A必须在调用 flush 写入持久化存储后才能被用户查询`**
 
 ![mivlus的wal](./milvus-cloud/milvus-wal.jpg)
 
