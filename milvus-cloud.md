@@ -101,7 +101,24 @@
 ---
 
 ## 文件名需要包含 meta 信息，能够自解析生成 meta
-- 
+- 按照一下文的收费模式，milvus cluster 按照使用时长收费，并且可以挂起
+- 当 milvus cluster 挂起后，其对应的 meta 信息需要从 etcd 中删除
+- milvus cluster 激活后根据文件名，自动生成 meta信息存入 etcd
+
+---
+
+## 插入数据流程
+-
+
+---
+
+### milvus cluster 中 Cache 干什么用？
+-
+
+---
+
+# 删除流程
+-
 
 ---
 
@@ -118,7 +135,9 @@
 - 学 snowflake，milvus cluster可以挂起
 - 创建 milvus cluster时可以设置运行一段时间后自动挂起
 - 和snowflake一样，自动挂起需要对应这自动恢复，在milvus cloud收到第一条查询查询指令时，自动恢复最近被被挂起的 milvus cluster
-- milvus cluster恢复后，内存中并没有数据，因此第一次查询会比较缓慢 
+- milvus cluster恢复后，内存中并没有数据，因此第一次查询会比较缓慢
+- 一个用户可以创建多个不同配置的 milvus cluster，但是在同一时间，只能有一个 milvus cluster 处于活跃状态，其它均为挂起状态
+- milvus cluster 挂起时，`Cache` 中的内容需要写入 `Storage`
 
 ---
 
