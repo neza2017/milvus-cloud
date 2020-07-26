@@ -108,7 +108,16 @@
 ---
 
 ## 插入数据流程
--
+- 一个 client 链接的所有 `insert` 操作都只在 milvus cluster 的一个 mivlus 节点上完成，如下图所示，Client A 插入的数据在调用 `flush` 之前均存在 Milvus A 上，不存在部分数据在 Milvus A，部分数据在 Milvus B；同理 Client B 插入的数据均在 Milvus B上
+![插入流程](./milvus-cloud/insert-flow.jpg)
+- 在调用 `flush` 之前，所有 `insert` 插入的数据均不可见
+- 之后 `flush` 返回成功后， `insert` 插入数据才可见
+- milvus 确保两个 `flush` 之间的所有 `insert` 和 `delete` 操作要么全部成功，要么全部失败，不会存在中间状态
+- milvus 将数据存入 S3 或 Cache 后，才能向 client 返回 `flush` 调用成功
+- 如果client在调用 `flush` 之前，与Milvus Cluster之间的链接断开，则此 client 之前 `insert` 到 Milvus Cluster 的数据均被清除
+- `flush` 返回失败的可能原因有以下几种，此时用户需要重新 `insert` ，并重新 `flush`
+  - 负责当前 client 数据插入的 milvus 宕机
+  - 数据存入 S3 或 Cache 失败
 
 ---
 
