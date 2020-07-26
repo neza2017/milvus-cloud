@@ -109,6 +109,7 @@
 
 ## 插入数据流程
 - 一个 client 链接的所有 `insert` 操作都只在 milvus cluster 的一个 mivlus 节点上完成，如下图所示，Client A 插入的数据在调用 `flush` 之前均存在 Milvus A 上，不存在部分数据在 Milvus A，部分数据在 Milvus B；同理 Client B 插入的数据均在 Milvus B上
+
 ![插入流程](./milvus-cloud/insert-flow.jpg)
 - 在调用 `flush` 之前，所有 `insert` 插入的数据均不可见
 - 之后 `flush` 返回成功后， `insert` 插入数据才可见
@@ -122,12 +123,18 @@
 ---
 
 ## milvus cluster 中 Cache 干什么用？
--
+- Cache 中存两类数据，`insert`数据和 `delete`记录
+- `insert`和 `delete`的数据量比较少时，可以先存在 Cache 中，积累到一定数据后再存入 storage
+- milvus 在挂起之前，Cache 中的数据必须存入 storage
 
 ---
 
 ## 删除流程
--
+- 和插入流程一样，`delete`操作只有在 `flush` 之后才生效
+- 对于 table 层面，支持批量的 drop table 操作
+- 在一个 table 内，一个 `delete` 命令只删除一条记录
+- 和 `insert` 一样，一个 client 链接的所有 `delete` 操作都只在 milvus cluster 的一个 mivlus 节点上完成
+- `delete` 记录在 `flush` 操作之前，只存在于 milvus 节点； `flush` 操作之后， `delete` 记录存于 Cache 中，当 Cache 中的数据量积累到一定程度后再写入持久化存储
 
 ---
 
