@@ -144,7 +144,7 @@
 ## 是否提供免费的试用途径?
 - 提供免费的试用途径
 - 用户登录后，在购买milvus cluster时，可以选择免费版本的free cluster
-- free cluster只有一个milvus实例，并且限制 memory 和 storage 的使用
+- free cluster只有一个milvus实例，并且限制 memory 和 storage 的使用量
 - free cluster的目标人群是milvus 用户中的开发人员，使用free cluster做接口调试，mongodb中的M0也是这么设定的
 - free cluster在创建后2小时内自动挂起，因为挂起的 milvus cluster 在收到查询指令后会自动回复，所以对开发人员而言是透明的
 
