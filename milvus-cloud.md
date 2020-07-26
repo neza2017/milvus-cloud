@@ -15,7 +15,7 @@
 
 ## 存储端为什么不用Raft?
 - Vearch使用 raft 实现，256维度，float，插入1万条，耗时26s，太慢
-- 测试环境为办公室的台式机，相同配置，插入10万条，耗时4s
+- 测试环境为办公室的台式机，相同配置，milvus 插入10万条，耗时4s
 
 ---
 
@@ -25,11 +25,31 @@
 
 ---
 
+## S3中存什么?
+- 原始的向量数据 raw data
+- 向量索引文件 index data
+- 数据删除记录 delete doc
+
+---
+
+## storage中为什么存删除记录而不是直接将数据删除
+- 如果数据直接从 storage 中删除，那么缩影文件需要重新构建，太费时
+- 在 milvus 假设的使用场景中，删除属于低频操作，存储删除记录不影响查询性能
+
+---
+
 ## milvus cluster 中的 load balance 和 reduce是干什么的？
 - load balance和reduce分别对应这milvus cluster的两种工作模式
 - load balance模式中，milvus cluster中的每个 milvus实例都拥有全量数据，针对提高QPS
 - reduce中，每个milvus实例拥有部分数据，针对超大数据集查询
 - load balance和reduce不能同时工作
+
+--
+
+## 为什么不在 milvus cluster前端接入 kafka 做数据分发
+- kafka的高可用需要引入 zookeeper，这样需要3台机器做kafka，3台机器做zookeeper，太费钱
+- 在 milvus cluster前端接入 kafka 目前能看到的可以为后续的`数据统计`和`数据审计`解耦，这两个功能直接从 `kafka` 订阅消息
+- `数据统计`和`数据审计`也可以直接从 `storage` 读数据，也是和 `milvus` 解耦的
 
 ---
 
@@ -40,15 +60,25 @@
 - 删除自动flush
 - milvus cloud需要自动升级，那么milvus后续版本的数据格式必须向后兼容
 - 数据文件需要有校验
+- 增加与S3的交互接口，从S3加载数据，并将数据存入S3
 
 ---
 
-## S3中存什么?
-- 原始的向量数据 raw data
-- 向量索引文件 index data
-- 数据删除记录 delete doc
+## 为什么要删除当前 milvus 中的 WAL
+- WAL 应该是存储层面的事，数据库层面应该是 binlog，当前 milvus　的 WAL 即不属于传统存储的 WAL 也不属于数据库层面的　binlog，感觉怪怪的
+- 传统意义上的 `WAL` 和 `binlog` 关系如下图所示，用户插入数据A时，数据库首先将数据A写`binlog`，然后向用户客户端返回插入操作，此时对用户来说插入操作已经结束了，用户可以在通过`query`查询数据A；数据库后台程序将数据A先写入`WAL`，再写入持久化存储
+
+![传统意义的WAL和binlog](./milvus-cloud/traditional-wal.jpg)
+
+- 当前 `milvus` 的 `WAL` 流程图如下所示，用户插入数据A时，数据库首先将数据A写`WAL`，然后向用户返回插入操作，对用户来说此时插入操作已经结束了，<font color=red> 但是此时用户依然无法查询数据A，数据A必须在调用 flush 写入持久化存储后才能被用户查询</font>
+
+![mivlus的wal](./milvus-cloud/milvus-wal.jpg)
 
 ---
+
+## 为什么要删除自动 flush
+- 
+
 
 ## 计费模式?
 - 仿照 snowflake，storage和 milvus cluster单独收费
