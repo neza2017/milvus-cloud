@@ -112,12 +112,12 @@
 
 ---
 
-### milvus cluster 中 Cache 干什么用？
+## milvus cluster 中 Cache 干什么用？
 -
 
 ---
 
-# 删除流程
+## 删除流程
 -
 
 ---
