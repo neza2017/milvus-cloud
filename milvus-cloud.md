@@ -9,7 +9,7 @@
 ## meta server为什么是全局的，为什么不是一个miluvs cluster一个meta server?
 - meta server 采用etcd，为了保证数据可靠不丢失，至少3台机器，一个miluvs cluster 一套meata server 太费钱， 全局meta server比较节约
 - meta数据量比较少，一套全局的 meta server足够支撑服务
-- .如果业务迅速扩展导致一套全局的meta server不足以支撑服务，可以部署多个meta server，每个meta server分别负责多个 milvus cluser
+- 如果业务迅速扩展导致一套全局的meta server不足以支撑服务，可以部署多个meta server，每个meta server分别负责多个 milvus cluser
 
 ---
 
@@ -20,7 +20,7 @@
 ---
 
 ## 为什么选择 S3作为storage?
-- snowflake的论文对S3做了一番调研，并且提到S3 是 “ hard to beat”
+- snowflake的论文对S3做了一番调研，并且提到S3 是 “hard to beat”
 - snowflake针对的场景是OLAP，即数据批量导入，并且delete 和 update 为低频操作，milvus的使用环境满足这种假设
 
 ---
@@ -51,7 +51,7 @@
 - 在 milvus cluster 前端接入 `kafka` 目前能看到的直接效果是为后续的`数据统计`和`数据审计`解耦，这两个功能直接从 `kafka` 订阅消息
 - `数据统计`和`数据审计`也可以直接从 `storage` 读数据，也是和 milvus 解耦的
 - `kafka`是`scala`技术栈，对于当前公司的团队来说，存在运维难度
-- 如果后期确实需要加入`kafaka`，当前的设计框架也是容易加入的
+- 如果后期确实需要加入`kafka`，当前的设计框架也是容易加入的
 
 ---
 
