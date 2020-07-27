@@ -171,3 +171,8 @@
 - 每个account有独立的URL
 - 一个account下可以有多个user，这些user共享一份账单
 - 因为当前的milvus并不具备用户管理的能力，所以这个功能可能需要放在 milvus service中的
+
+---
+
+## 如何保证用户的安全性?
+- 参考 mongodb，使用 ip 地址白名单
