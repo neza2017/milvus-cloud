@@ -2,7 +2,7 @@
 
 本方案参考 snowflake，整体框架图如下：
 
-![](./milvus-cloud/milvus-cloud.jpg)
+![](./milvus-cloud/milvus-cloud2.jpg)
 
 ---
 
