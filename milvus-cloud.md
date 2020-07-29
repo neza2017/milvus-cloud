@@ -144,7 +144,7 @@
 - milvus cluster 可以选择机器配置及机器数目，不同的配置对应不同的单价
 - 学 snowflake，milvus cluster 按照使用时长收费
 - Storage的收费模式学snowflake，按照每个月的平均存储量计算
-- S3 存储读写是有收费的，是否限定 milvus cluster 的 flush 调用用次数，针对不同量级的存储，限定不同的 flush 次数，超过规定次数则收取不同的费用
+- S3 存储读写是有收费的，是否限定 milvus cluster 的 flush 调用用次数，针对不同量级的存储，限定不同的 flush 次数，超过规定次数则收取不同的费用，如果添加这个收费，是否可以暂时不考虑 Cache?
 
 ---
 
