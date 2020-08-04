@@ -12,52 +12,34 @@ docker-compose up -d
 
 ## 获取 `PD` 的 `ip` 地址
 ```bash
-$ docker exec tidb-docker-compose_pd0_1 cat /etc/hosts
-127.0.0.1	localhost
-::1	localhost ip6-localhost ip6-loopback
-fe00::0	ip6-localnet
-ff00::0	ip6-mcastprefix
-ff02::1	ip6-allnodes
-ff02::2	ip6-allrouters
-192.168.96.6	cb4a05d3cd6b
-$ docker exec tidb-docker-compose_pd2_1 cat /etc/hosts
-127.0.0.1	localhost
-::1	localhost ip6-localhost ip6-loopback
-fe00::0	ip6-localnet
-ff00::0	ip6-mcastprefix
-ff02::1	ip6-allnodes
-ff02::2	ip6-allrouters
-192.168.96.2	80d7f7a1839f
-$ docker exec tidb-docker-compose_pd1_1 cat /etc/hosts
-127.0.0.1	localhost
-::1	localhost ip6-localhost ip6-loopback
-fe00::0	ip6-localnet
-ff00::0	ip6-mcastprefix
-ff02::1	ip6-allnodes
-ff02::2	ip6-allrouters
-192.168.96.7	a6fe52fce3d8
+$ IP1=$(docker exec tidb-docker-compose_pd0_1 cat /etc/hosts | tail -1 | awk '{print $1}')
+$ IP2=$(docker exec tidb-docker-compose_pd1_1 cat /etc/hosts | tail -1 | awk '{print $1}')
+$ IP3=$(docker exec tidb-docker-compose_pd2_1 cat /etc/hosts | tail -1 | awk '{print $1}')
+$ ENDPOINTS=$IP1:2379,$IP2:2379,$IP3:2379
+$ echo "endpoints : $ENDPOINTS"
+endpoints : 192.168.224.6:2379,192.168.224.3:2379,192.168.224.8:2379
 ```
 
 ## 使用 `etcd` 访问 `PD`
 ```bash
-$ ETCDCTL_API=3 ./etcdctl --endpoints=192.168.96.6:2379,192.168.96.2:2379,192.168.96.7:2379 member list      
+$ ETCDCTL_API=3 etcdctl --endpoints=$ENDPOINTS member list      
 23a875b0ed30f56f, started, pd0, http://pd0:2380, http://pd0:2379, false
 47149ed249f68e2b, started, pd1, http://pd1:2380, http://pd1:2379, false
 545874f77ee42365, started, pd2, http://pd2:2380, http://pd2:2379, false
-$ ETCDCTL_API=3 ./etcdctl --endpoints=192.168.96.6:2379,192.168.96.2:2379,192.168.96.7:2379 endpoint health
-192.168.96.7:2379 is healthy: successfully committed proposal: took = 3.89298ms
-192.168.96.6:2379 is healthy: successfully committed proposal: took = 3.475542ms
-192.168.96.2:2379 is healthy: successfully committed proposal: took = 3.822029ms
+$ ETCDCTL_API=3 etcdctl --endpoints=$ENDPOINTS endpoint health
+192.168.224.3:2379 is healthy: successfully committed proposal: took = 759.883µs
+192.168.224.8:2379 is healthy: successfully committed proposal: took = 1.09023ms
+192.168.224.6:2379 is healthy: successfully committed proposal: took = 1.159055ms
 ```
 
 ## 列出 `PD` 中的所有 `key`
 ```bash
-ETCDCTL_API=3 ./etcdctl --endpoints=192.168.96.6:2379,192.168.96.2:2379,192.168.96.7:2379 get '' --prefix
+ETCDCTL_API=3 etcdctl --endpoints=$ENDPOINTS get '' --prefix
 ```
 
 ## 监视 `PD` 中所有的 `key`
 ```bash
-ETCDCTL_API=3 ./etcdctl --endpoints=192.168.96.6:2379,192.168.96.2:2379,192.168.96.7:2379 watch '' --prefix
+ETCDCTL_API=3 etcdctl --endpoints=$ENDPOINTS watch '' --prefix
 ```
 可以发现 `timestamp` 及 `ttl` 定时更新
 
