@@ -161,3 +161,7 @@
 
 ## 如何保证用户的安全性?
 - 参考 mongodb，使用 ip 地址白名单
+
+---
+## 有几个疑问
+- `clientA` 和 `clientB` 同时链接 `milvus`，并且 `clientA` 向 `collectionT` 插入数据 `vectorA`，没有 `flush` ； `clientB` 向 `collectionT` 插入数据 `vectorB`， 没有 `flush`，那么 `clientA` 的 `search`操作是否有数据 `vectorB`
