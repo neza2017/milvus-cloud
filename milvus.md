@@ -1,5 +1,8 @@
 # milvus 
 milvus 方案设计
+
+---
+
 ## 前提假设
 - 同一个客户端严格保操作时序，不同客户端不保证时序
     - C<sub>1</sub> 在本地时刻 T<sub>0</sub> 发起插入操作 I<sub>0</sub>，插入数据 D<sub>A</sub>，并执行 `flush` 操作
