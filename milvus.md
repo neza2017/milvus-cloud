@@ -94,14 +94,20 @@ milvus 方案设计
 ## `etcd` 及元数据
 - `etcd` 保存全局的 `meta` 信息
 - 多个 `Milvus-Cluster` 可以共用一个 `etcd`
-- `etcd` 中的 `meta` 类型 
+- `etcd` 中的 `meta` 类型
+  - 用户列表
+    - `key` 为 `/user_list`
+    - `value` 为一个 `array`，每条记录包含一个`<user_name>`
   - `key` 对应 `S3` 里面的文件
     - `key` 的命名格式为: `/<user_name>/<collect_name>/<S3_file_path>`
     - `value` 内容包含
       - 文件类型：索引文件，原始向量文件，标量文件
       - 文件大小，单位为字节
       - 插入该文件的 `Milvus` 节点序号
-      - 如果为标量文件，还需要记录对应的列名称
+      - 如果为标量文件，还需记录以下内容
+        - 对应的列名
+        - 当前标量文件对应的向量文件名
+      - 如果为索引文件，则需要记录所对应的原始向量文件列表，索引文件可以由多个向量文件构成
   - `key` 对应属于当前用户的 `collection list`
     - `key` 命名格式为：`/<user_name>/collection_list`
     - `value` 为一个 `array`,每条记录的格式为: `<collect_name> : <create_time>, <index_type>` 按照 `<create_time>` 降序排列
@@ -174,4 +180,7 @@ milvus 方案设计
 
 
 ### `Milvus` 节点宕机重启后需要加载的数据
+- `Reduce` 模式下，如果发生宕机，则暂时无法对外提供服务，等节点回复后才能对外提供服务
 - 根据 `/<user_name>/collection_list` 从 `etcd` 请求获得当前用户的所有 `collection`
+- 使用前缀查询的方式，`/<user_name>/<collect_name>/<S3_file_path>`，所有的 `S3` 文件名
+- 根据文件内记录的插入该文件的 `Milvus` 节点序号，从 `S3` 读取属于该节点的所有文件，如果内存放不小，则 `collection` 创建的时间顺序，文件创建的时间顺序两级排序，优先将近期的文件放到内存中，其余存到磁盘中，直到磁盘放不小
