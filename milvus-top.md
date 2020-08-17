@@ -56,6 +56,15 @@
   - 类型 : `int32`
   - 默认值  : `0`
   - 同步等级，插入或删除操作在 `Milvus-Cluster` 上产生 `sync_level` 个 `replica` 后才向 `client` 返回，因此该值的上限为 `num_replicas`
+- `master_address`: 
+  - 无默认值
+  - `Master` 节点的 `ip` 地址和端口
+- `node_address_lists`:
+  - 无默认值
+  - 这是个列表，包含每个记录包含一下信息
+    - `node` 节点编号,从 `0` 开始
+    - `IP` 地址
+    - 端口
 
 ---
 
@@ -76,7 +85,6 @@
 +---------------------------------------------------------------------------------------+
 ```
 - `Milvus-Cluster` 包含多个 `Miluvs` 节点
-- `Milvus-Cluster` 启动是需要获得当前集群元数据在 `etcd` 中的前缀，一般格式为： `/<username>`
 - `Milvus-Cluster` 有一个全局唯一的`ID`
 - 底层存储不一定是 `S3`，只要是共享存储即可， `etcd` 中 `<S3_file_path>` 改为对应的共享存储路径即可
 
@@ -84,14 +92,40 @@
 
 ## `Master` 节点
 - `Master` 是无状态的服务
-- `Master` 具有简单的转发功能
+- `Master` 根据负载状态告知 `client` 链接哪个 `Milvus` 节点
   - `client` 首先链接 `Master`,`Master`根据各个`Miluvs`节点的负载状态，选择一个合适的 `Miluvs`节点，并其 `IP` 地址和端口返回给 `client`
   - `client` 收到 `Master` 返回的 `Miluvs` 节点 `IP`地址和端口后，主动断开和 `Master` 的链接
   - `client` 链接目标的 `Milvus` 节点
   - 因此 `Milus-Cluster` 内的所有 `Milvus` 节点和 `Master` 节点都必须对外暴露自己的IP地址
+```txt
+              client 链接 Milvus 节点
+
++--------+                                   +--------+
+|        |                                   |        |
+|        | (1) Connect with Master           |        |
+|        |----------------------------------->        |
+|        |                                   |        |
+|        | (2) Milvus node IP and Port       |        |
+|        <-----------------------------------| Master |
+|        |                                   |        |
+|        | (3) Close connection with Master  |        |
+| client <----------------X----------------->|        |
+|        |                                   |        |
+|        |                                   |        |
+|        |                                   |        |
+|        |                                   +--------+
+|        |
+|        |
+|        |                                   +--------+
+|        | (4) Connect with Milvus           |        |
+|        |-----------------------------------> Milvus |
+|        |                                   |        |
++--------+                                   +--------+
+```
+
 - `Master` 定期的向所有的 `milvus` 节点请求心跳信号，确定 `milvus` 节点是否依然存活
 - `Milvus` 节点可以向 `Master` 节点请求其他节点的负载状态；该功能在 `Reduce`模式的插入操作中使用，如果当前`Milvus`节点的内存超过警戒线，则`Milvus` 节点向 `Master` 节点请求其它`Miluvs`节点的负载状态，然后选择一个选择一个低负载的节点，将插入数据转发到那个节点
-- `Master` 需要 `watch etcd` 的 这个 `/<user_name>/<miluvs_cluster_id>_property`，当有新的节点加入后会更新这个 `key`
+- `Master` 需要 `watch etcd` 的 这个 `/<user_name>/config/<Milvus-Cluster_ID>`，当有新的节点加入后会更新这个 `key`
 
 ---
 
@@ -118,4 +152,57 @@
   - `key` 对应属于当前用户的 `Milvus-Cluster` 属性，一个用户可以拥有多个 `Milvus-Cluster`
     - `key` 命名格式为：`/<user_name>/config/<Milvus-Cluster_ID>`
     - `value` 内容为 `json` 格式存储的 `Milvus-Cluster` 配置文件
+
+---
+
+
+## 数据两阶段插入流程
+
+```txt
+                                     两阶段插入
+
++--------+                                   +--------+
+|        |                                   |        |                                 +------+
+|        |         (1) Insert(vector)        |        |      (3) Put("tmp-s3")          |      |
+|        |----------------------------------->        |--------------------------------->  S3  |
+|        |                                   |        |                                 |      |
+|        |         (2) Flush                 |        |                                 +------+
+|        |----------------------------------->        |
+|        |                                   |        |
+|        |         (4) "tmp-etcd"            |        |                                 +------+
+| client <-----------------------------------| Milvus |      (6) Put("tmp-etcd")        |      |
+|        |                                   |        |---------------------------------> etcd |
+|        |         (5) "tmp-etcd"            |        |                                 |      |
+|        |----------------------------------->        |                                 +------+
+|        |                                   |        |
+|        |         (7) Success               |        |
+|        <-----------------------------------|        |
+|        |                                   |        |
+|        |                                   |        |
++--------+                                   +--------+
+```
+
+- `client` 执行 `flush` 操作触发数据写 `S3`
+- `Milvus` 节点将数据 `put` 到 `S3`，假设文件名为 `tmp-s3`
+- 获得 `tmp-s3` 对应 `etcd` 中的 `key`，假设为 `tmp-etcd`
+- 向 `client` 发送 `tmp-etcd` 字符串
+- `client` 向 `milvus` 返回 `tmp-etcd` 字符串确认收到
+- `milvus` 收到 `client`的返回后，再 `etcd` 插入 `tmp-etcd` -> `tmp-s3`
+- 向 `client` 发送 `flush` 操作成功
+- 如果 `Milvus` 超时未收到 `client` 的返回，则删除 `tmp-s3` 文件，切直接切断当前与 `client` 的链接
+
+**注意事项**
+`client`有下列3种状态
+- `client` 收到 `flush` 操作成功或失败
+- `client` 未收到任何信息，直接超时，表示当前操作失败
+- `client` 收到 `tmp-etcd` 信息，当时未收到 `flush` 操作成功的信息，此时 `client` 需要重新链接并向 `milvus` 查询 `tmp-etcd` 是否在 `etcd` 中
+
+如果 `tmp-etcd` 对应的 `tmp-s3` 文件被合并导致 `tmp-etcd` 不存在，可能导致 `client` 重新链接时查询 `tmp-etcd` 失败；为了防止这种情况出现，文件合并后，需要在某个地方依然保存 `tmp-etcd`， 确保可以被查询到
+
+---
+
 ## 插入操作
+- 数据插入到哪个节点，则由哪个节点负责将数据写入 `S3`，
+- 数据由哪个 `Milvus` 节点插入，则索引文件由哪个节点创建
+- 采用批处理模式，保证 `flush` 内的操作整理成功或整体失败
+- 插入请求中包含当前插入的数据量，以 `Byte` 计算
