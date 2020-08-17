@@ -48,6 +48,7 @@ milvus 方案设计
 - `Milvus-Cluster` 有两种工作模式，`ReadWrite` 和 `ReadOnly`
 - `Milvus-Cluster` 启动是需要获得当前集群元数据在 `etcd` 中的前缀，一般格式为： `/<username>`
 - `Milvus-Cluster` 有一个全局唯一的`ID`
+- 底层存储不一定是 `S3`，只要是共享存储即可， `etcd` 中 `<S3_file_path>` 改为对应的共享存储路径即可
 
 ---
 
