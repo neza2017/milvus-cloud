@@ -26,7 +26,13 @@
   - C<sub>1</sub> 在本地时刻 T<sub>1</sub> 发起删除操作 D<sub>1</sub>，删除数据 D<sub>B</sub>，未执行 `flush` 操作
   - C<sub>1</sub> 在本地时刻 T<sub>2</sub> 与服务端断开链接
   - 数据 D<sub>A</sub> 在服务器端被抛弃，数据 D<sub>B</sub>在服务端未被删除，依然可以被查询到
-- `Insert` 和 `Delete` 操作需要 `flush`，其它不需要,如`create table`,`drop table`
+- 只有 `insert` 和 `delete` 需要 `flush`，其它不需要,如 `create collection`,`drop collection`
+- 同一个 `flush` 块内必须为同一个操作，不能混搭
+  - 假设 `flush` 语句块为 : `{insert v1 into t1; insert v2 into t1; delete v3 from t1}`
+  - 因为这个 `flush` 语句块同时包含 `insert 和  delete`，所以本次 `flush` 操作返回失败
+- 同一个 `flush` 块内，`insert` 和 `delete` 必须属于同一个 `Collection`
+  - 假设 `flush` 语句块为 : `{insert v1 into t1; insert v2 into t2; insert v3 into t1}`
+  - 因为这个 `flush` 语句块同时向 `t1` 和 `t2` 插入数据，所以本次 `flush` 操作失败
 - 这个设计针对批插入，并且删除属于低频操作
 - 不涉及用户管理，及访问控制，访问控制由 `IP` 地址白名单实现
 
@@ -453,16 +459,22 @@
   - 因为 `replicas` 为 `[1,3,-5]`，表明 `F0` 曾经复制到 `N3` 节点
   - 但是当前内存及磁盘并不存在 `F0` 数据
   - 那么唯一合理的解释就是因为内存不够用，文件`F0`被抛弃了，下次查询用到 `F0` 时，需要从 `S3` 加载
+- `N3` 在复制 `F0` 的过程中，因为有新数据插入，导致内存不够，如何处理？
+  - 优先将内存中的未使用的数据移到磁盘，如果还不够，则表明本次复制失败，由下次定时任务重新触发复制任务
 
 ---
 
 ## 删除流程
+- 
 
-- 删除操作是所有节点广播的
+**注意事项**
+- 删除操作 由包含当前 `collection` 数据最多的节点删除
 - 删除操作只生成 `delete log`
+- 存在重复删除
 - 删除操作不存在与插入操作类似的转发功能
-- 数据由哪个节点插入，则由哪个节点删除
-- 如果插入节点宕机，如何处理？
+- 由 `InsertNode` 负责数据删除，并触发 复制命令，通知 `ReplicaNode` 复制 `delete log`
+- 如果 `InsertNode` 宕机，如何处理？
+  - 
 
 ---
 
