@@ -30,9 +30,16 @@
 - 同一个 `flush` 块内必须为同一个操作，不能混搭
   - 假设 `flush` 语句块为 : `{insert v1 into t1; insert v2 into t1; delete v3 from t1}`
   - 因为这个 `flush` 语句块同时包含 `insert 和  delete`，所以本次 `flush` 操作返回失败
-- 同一个 `flush` 块内，`insert` 和 `delete` 必须属于同一个 `Collection`
+- 同一个 `flush` 块内必须为同一个`collection`的操作，不能混搭
   - 假设 `flush` 语句块为 : `{insert v1 into t1; insert v2 into t2; insert v3 into t1}`
   - 因为这个 `flush` 语句块同时向 `t1` 和 `t2` 插入数据，所以本次 `flush` 操作失败
+- 不涉及主键唯一性检查
+- `delete` 指令中，被删除的数据不存在，删除操作依然成功，不返回错误信息，仅仅有日志记录了这个行为
+- 存在重复删除的情况
+  - `client 1` 在 `T1` 时刻发起删除指令 `delete v1 from t1`
+  - `client 2` 也在 `T1` 时刻发起删除指令 `delete v1 from t1`
+  - 最后可能存在两条关于 `delete v1 from t1` 的 `delete log`
+  - 重复删除不影响最后结果的正确性
 - 这个设计针对批插入，并且删除属于低频操作
 - 不涉及用户管理，及访问控制，访问控制由 `IP` 地址白名单实现
 
@@ -47,6 +54,7 @@
   - 当 `auto_flush` 为 `true` 时，以下两种情况均可以触发 `flush`
     - 定时超过 `flush_interval` 后触发
     - 插入的数据超过 `flush_limitition` 后触发
+  - 因为同一个 `flush` 块内不能混搭不同的操作，也不能混搭不同的 `collection`，所以 `auto_flush` 需要自动划分 `flush` 块
   - 当 `auto_flush` 为 `true` 时，如果自动触发的 `flush` 操作运行失败，则数据丢失，不向用户返回任何信息，仅仅记录日志 
 - `flush_interval`
   - 类型 : `int32`
@@ -373,6 +381,10 @@
   - `N1` 节点内的定时任务可以启动复制操作
   - 如果某次查询用到了 `F0` 数据，查询指令也可以启动复制任务
 - 插入请求中包含当前插入的数据量，以 `Byte` 计算
+- 插入操作不做主键唯一性检查
+- 同一个 `flush` 块内，插入操作必须属于同一个 `Collection`
+  - 假设 `flush` 语句块为 : `{insert v1 into t1; insert v2 into t2; insert v3 into t1}`
+  - 因为这个 `flush` 语句块同时向 `t1` 和 `t2` 插入数据，所以本次 `flush` 操作失败
 
 ---
 
@@ -470,11 +482,12 @@
 **注意事项**
 - 删除操作 由包含当前 `collection` 数据最多的节点删除
 - 删除操作只生成 `delete log`
-- 存在重复删除
 - 删除操作不存在与插入操作类似的转发功能
-- 由 `InsertNode` 负责数据删除，并触发 复制命令，通知 `ReplicaNode` 复制 `delete log`
-- 如果 `InsertNode` 宕机，如何处理？
-  - 
+- 存在重复删除的情况
+  - `client 1` 在 `T1` 时刻发起删除指令 `delete v1 from t1`
+  - `client 2` 也在 `T1` 时刻发起删除指令 `delete v1 from t1`
+  - 最后可能存在两条关于 `delete v1 from t1` 的 `delete log`
+  - 重复删除不影响最后结果的正确性
 
 ---
 
