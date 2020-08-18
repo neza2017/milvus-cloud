@@ -483,13 +483,44 @@
 ---
 
 ## 删除流程
-- `client` 向 `N1` 发送删除指令，要求从 `collection` 表 `T0` 中删除数据 `v0`
+- `client` 向 `N1` 发送删除指令`del1`，要求从 `collection` 表 `T0` 中删除主键为 `v0` 的数据
 - `N1` 从 `etcd` 获取最新 `revision` 下 `T0` 的所有 `meta`
-- 
+- 根据 `meta` 信息，`N1` 得到一下信息
+  - `T0` 一共包含 `3` 个文件：`F0,F1,F2`
+  - `F0` 位于 `N2 N3` 节点，`meta` 对应的 `kv` 为 `kF0`->`mF0`
+  - `F1` 位于 `N1 N2` 节点，`meta` 对应的 `kv` 为 `kF1`->`mF1`
+  - `F2` 位于 `N1 N3` 节点，`meta` 对应的 `kv` 为 `kF2`->`mF2`
+- `N1` 向 `N1, N2, N3` 发送请求，获得节点当时的负载状态, 据此，`N1` 做出如下安排:
+  - 向 `N1` 发送查询请求 `del11`，在文件 `F1` 上查询 `v0` 的 `offset`
+  - 向 `N2` 发送查询请求 `del12`，在文件 `F0` 上查询 `v0` 的 `offset`
+  - 向 `N3` 发送查询请求 `del13`，在文件 `F2` 上查询 `v0` 的 `offset`
+- `del11 del12 del13` 返回结果如下：
+  - `del11` : -1
+  - `del12` : Noffset
+  - `del13` : -1
+- `N1` 根据 `del11 del12 del13` 的返回值，生成 `delete log` 文件 `dF0`，内容如下:
+  - `{T0, v0, F0, Noffset}`
+- `N1` 将 `dF0` 存到 `S3`
+- 生成 `dF0` 对应 `etcd` 中的 `key`，假设为 `kDF0`
+  - 因为 `delete log` 需要被复制到所有节点上
+  - 所以 `dF0` 对应的 `replicas` 为 `[1,-2,-3,-4,-5]`
+- 向 `client` 发送 `kDF0` 字符串
+- `client` 向 `N1` 返回 `kDF0` 字符串确认收到
+- `N1` 向 `etcd` 插入 `kDF0` -> `dF0`
+  - 此处向 `etcd` 插入 `meta` 采用事务操作
+  - 因为主键 `v0` 对应所在的文件为 `F0`，而 `F0` 文件可能已经被合并了
+  - `IF value(kF0) = mF0; THEN Put kDF0 dF0`
+- 向 `client` 发送删除操作 `del1` 执行成功 
+- 向 `N2 N3 N4 N5` 发送复制指令，将文件 `F0` 从 `N1` 节点复制到 `N2 N3 N4 N5` 节点
+
 
 **注意事项**
 - 删除操作 由包含当前 `collection` 数据最多的节点删除负责
-- 删除操作只生成 `delete log`
+- 删除操作只生成 `delete log`，每条记录包含以下内容:
+  - collection_name
+  - 向量 `ID`
+  - 向量所在的 `S3` 文件名
+  - 向量被删除向量的行号索引，从0 开始
 - 存在重复删除的情况
   - `client 1` 在 `T1` 时刻发起删除指令 `delete v1 from t1`
   - `client 2` 也在 `T1` 时刻发起删除指令 `delete v1 from t1`
@@ -498,6 +529,7 @@
 - 同一个 `flush` 块内必须为同一个`collection`的删除操作，不能混搭
   - 假设 `flush` 语句块为 : `{delete v1 from t1; delete v2 from t2;}`
   - 因为这个 `flush` 语句块同时从 `t1` 和 `t2` 删除数据，所以本次 `flush` 操作失败
+- 和插入数据一样，删除数据更新 `meta` 也设计涉及到两阶段提交
 
 ---
 
