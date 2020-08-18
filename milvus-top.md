@@ -489,6 +489,9 @@
   - `client 2` 也在 `T1` 时刻发起删除指令 `delete v1 from t1`
   - 最后可能存在两条关于 `delete v1 from t1` 的 `delete log`
   - 重复删除不影响最后结果的正确性
+- 同一个 `flush` 块内必须为同一个`collection`的删除操作，不能混搭
+  - 假设 `flush` 语句块为 : `{delete v1 from t1; delete v2 from t2;}`
+  - 因为这个 `flush` 语句块同时从 `t1` 和 `t2` 删除数据，所以本次 `flush` 操作失败
 
 ---
 
