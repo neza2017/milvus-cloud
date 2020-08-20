@@ -627,7 +627,7 @@
 
 
 **注意事项**
-- 删除数据的更新 `meta` 采用 `CAS` 模式，只有在保证以下两个条件下才能更新 `delete log` 的 `meta`
+- 采用 `CAS` 模式更新 `meta` ，只有在保证以下两个条件下才能更新 `delete log` 的 `meta`
   - `/<user_name>/<collection_name>/data/<fragment_id>`没有发生改变，即在删除过程中 `delete log` 所属于的 `fragment` 没有发生改变
   -  `/<user_name>/<collection_name>/delete_log/<fragment_id>`没有发生改变，即删除过程中，没有别的用户在同一个 `fragment` 上删除数据
 - 删除操作只生成 `delete log`，每条记录包含以下内容:
@@ -643,23 +643,31 @@
 ---
 
 ## 创建索引(合并文件)
-- 文件由哪个节点插入，则由哪个节点负责创建索引
-- 如果插入节点宕机，如何处理
+- `N1` 节点触发了针对 `collection` `T0`  的创建索引任务
+- `N1` 节点获得 `etcd` 最新的 `revision` 值 `r1`，并获得 `T0` 的最新 `meta`
+- 根据 `meta` 
+
+
+
+**注意事项**
+- 由原始向量文件的 `InsertNode` 负责创建该文件的索引
+- 按照 [逻辑存储格式](##逻辑存储格式) `fragment 2` 所展示的，创建索引伴随这文件合操作
+  - 向量文件是`逻辑`意义上合并，但是`delete log` 则是物理意义上的合并
+  - `raw file 1, raw file 2, raw file 3`在逻辑意义上合并成一个文件，并依据这个合并的文件创建了索引文件 `Index file`
+  - `raw file 1, raw file 2, raw file 3`必须属于同一个 `InsertNode`
+  - `delete log 1, delete log 2, delete log 3` 在物理意义上合并成一个新的文件 `delete log`
+  - `delete log 1, delete log 2, delete log 3` 并不关心是否属于同一个 `InsertNode`；但是 `delete log 1` 必须和 `raw file 1` 属于同一个 `fragment`, `delete log 2` 必须和 `raw file 2` 属于同一个 `fragment`, `delete log 3` 必须和 `raw file 3` 属于同一个 `fragment`
+- 创建索引由 `Milvus` 节点自动发起
 - 创建索引也需要复制 `replica`
+- 索引文件
+- 采用 `CAS` 模式更新 `meta` ，只有在保证以下两个条件下才能更新索引文件 的 `meta`
+  - `/<user_name>/<collection_name>/data/<fragment_id>`没有发生改变，即在创建索引的过程中，原始向量文件没有发生改变；如果是多个原始向量文件合并成索引文件，则必须保证相关的原始向量文件未发生改变
+  - `/<user_name>/<collection_name>/delete_log/<fragment_id>`没有发生改变，如果伴随这 `delete log` 的合并操作，那么必须保证在创建索引的过程中相关的 `delete log` 未发生修改
 
 ---
-
-## 合并文件
-- 由 `InsertNode` 负责合并操作
-- 只有 `InsertNode` 相同的文件才能被合并
-- 合并文件也需要复制 `replica`
-- 合并操作由 `Milvus` 后台程序自动发起
-
----
-
 
 ## `Milvus`节点重启后需要加载的数据
--
+
 
 ## 动态扩容量
 - 动态扩容不影响已经存在文件分布，只有后续新插入的数据能够进入新增节点
