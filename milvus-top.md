@@ -294,6 +294,12 @@
 
 ---
 
+## `S3` 文件存储路径
+- `fragment` 数据文件: `/<user_name>/<collection_name>/data/<fragment_id>/<file_name>`
+- `delete log` 数据文件: `/<user_name>/<collection_name>/data/<fragment_id>/<file_name>`
+
+---
+
 ## 查询流程
 
 ```txt
