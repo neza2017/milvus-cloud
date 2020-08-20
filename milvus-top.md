@@ -32,11 +32,6 @@
   - 因为这个 `flush` 语句块同时向 `t1` 和 `t2` 插入数据，所以本次 `flush` 操作失败
 - 不涉及主键唯一性检查
 - `delete` 指令中，被删除的数据不存在，删除操作依然成功，不返回错误信息，仅仅有日志记录了这个行为
-- 存在重复删除的情况
-  - `client 1` 在 `T1` 时刻发起删除指令 `delete v1 from t1`
-  - `client 2` 也在 `T1` 时刻发起删除指令 `delete v1 from t1`
-  - 最后可能存在两条关于 `delete v1 from t1` 的 `delete log`
-  - 重复删除不影响最后结果的正确性
 - 支持粗粒度的`多写`操作
   - 一个 `client` 只有一个写节点，不存在把一次写操作的数据分成多份，然后多个写节点同时写的情况
   - 如果需要提高写入速度，可以链接多个 `client`
@@ -329,7 +324,7 @@
 - `N1` 从 `etcd` 获得当前的 `revision` 值 `r1`
 - `N1` 提取 `T0` 在 `r1` 下的所有 `meta` 信息
 - 根据 `meta` 信息，`N1` 得到这些信息
-  - `T0` 一共包含 `3` 个文件：`F0,F1,F2`
+  - `T0` 一共包含 `3` 个`fragment`：`F0,F1,F2`
   - `F0` 位于 `N2 N3` 节点
   - `F1` 位于 `N1 N2` 节点
   - `F2` 位于 `N1 N3` 节点
@@ -442,8 +437,8 @@
 +--------+                         +--------+
 ```
 
-- `client` 向 `Milvus` 节点 `N1` 插入数据，生成文件 `F0`
-- `N1` 将文件 `F0` 写入 `S3`
+- `client` 向 `Milvus` 节点 `N1` 插入数据，生成`fragment` `F0`
+- `N1` 将 `F0` 写入 `S3`
 - `N1` 向其它节点 `N2 ~ N5` 发送查询请求，询问其负载状态
 - 根据 `N2 ~ N5` 的负载状态，及配置文件中 `num_replicas`，`N1` 决定将 `F0` 分别复制到 `N3` 和 `N5`
 - 向 `etcd` 中插入 `meta` 信息，其中 `replicas` 值为 `[1,-3,-5]`；`-3 -5` 表明数据 `F0` 正在往 `N3 N5` 复制的过程中
@@ -554,9 +549,9 @@
 
 ## 删除流程
 - `client` 向 `N1` 发送删除指令`del1`，要求从 `collection` 表 `T0` 中删除主键为 `v0` 的数据
-- `N1` 从 `etcd` 获取最新 `revision` 下 `T0` 的所有 `meta`
+- `N1` 从 `etcd` 获取最新 `revision` 记为 `r1`，并获得 `r1` 下 `T0` 的所有 `meta`
 - 根据 `meta` 信息，`N1` 得到一下信息
-  - `T0` 一共包含 `3` 个文件：`F0,F1,F2`
+  - `T0` 一共包含 `3` 个`fragment`：`F0,F1,F2`
   - `F0` 位于 `N2 N3` 节点，`meta` 对应的 `kv` 为 `kF0`->`mF0`
   - `F1` 位于 `N1 N2` 节点，`meta` 对应的 `kv` 为 `kF1`->`mF1`
   - `F2` 位于 `N1 N3` 节点，`meta` 对应的 `kv` 为 `kF2`->`mF2`
@@ -568,34 +563,33 @@
   - `del11` : -1
   - `del12` : Noffset
   - `del13` : -1
-- `N1` 根据 `del11 del12 del13` 的返回值，生成 `delete log` 文件 `dF0`，内容如下:
-  - `{T0, v0, F0, Noffset}`
-- `N1` 将 `dF0` 存到 `S3`
-- 生成 `dF0` 对应 `etcd` 中的 `key`，假设为 `kDF0`
-  - 因为 `delete log` 需要被复制到所有节点上
-  - 所以 `dF0` 对应的 `replicas` 为 `[1,-2,-3,-4,-5]`
-- 向 `client` 发送 `kDF0` 字符串
-- `client` 向 `N1` 返回 `kDF0` 字符串确认收到
-- `N1` 向 `etcd` 插入 `kDF0` -> `dF0`
-  - 此处向 `etcd` 插入 `meta` 采用事务操作
-  - 因为主键 `v0` 对应所在的文件为 `F0`，而 `F0` 文件可能已经被合并了
-  - `IF value(kF0) = mF0; THEN Put kDF0 dF0`
+- `N1` 根据 `del11 del12 del13` 可以知，向量 `v0` 只在 `fragment` `F0`上
+- 获得 `r1` 下 `F0` 的 `delete log`,假设对应的 `kv` 为 `kDoldF0` -> `kVoldF0`
+- 假设 `kVoldF0` 对应的 `S3` 文件内容为 `{T0, vx, F0, Xoffset}`
+- 生成新的 `delete log` 文件，内容如下
+```txt
+{T0, vx, F0, Xoffset}
+{T0, v0, F0, Noffset}
+```
+- 假设新生成的 `delete log` `meat` 对应的 `kv` 为 `kDnewF0` -> `kVnewF0`
+- 查询 `meta` 可以 `fragment` `F0` 当前位于节点 `N2 N3` 上,所以新生成的 `delete log` 也需要被复制到 `N2 N3` 上
+- 又因为 当前的 `delete log` 在节点 `N1` 上生成，所以 `kVnewF0` 对应的 `replicas` 属性为 `[1,-2,-3]`，表示当前文件在 `N1` 生成，但是需要被复制到 `N2 N3`
+- 采用两阶段提交的方式将 `kVnewF0` 写入 `S3` 并采用 `CAS` 模式更新 `meta`:
+  - `IF value(kF0) = mF0 AND value(kDoldF0) = kVoldF0`
+  - `THEN put kDnewF0 kVnewF0`
 - 向 `client` 发送删除操作 `del1` 执行成功 
-- 向 `N2 N3 N4 N5` 发送复制指令，将文件 `F0` 从 `N1` 节点复制到 `N2 N3 N4 N5` 节点
+- 向 `N2 N3 发送复制指令，将文件 `kVnewF0`对应的文件 从 `N1` 节点复制到 `N2 N3` 节点
 
 
 **注意事项**
-- 删除操作 由包含当前 `collection` 数据最多的节点删除负责
+- 删除数据的更新 `meta` 采用 `CAS` 模式，只有在保证以下两个条件下才能更新 `delete log` 的 `meta`
+  - `/<user_name>/<collection_name>/data/<fragment_id>`没有发生改变，即在删除过程中 `delete log` 所属于的 `fragment` 没有发生改变
+  -  `/<user_name>/<collection_name>/delete_log/<fragment_id>`没有发生改变，即删除过程中，没有别的用户在同一个 `fragment` 上删除数据
 - 删除操作只生成 `delete log`，每条记录包含以下内容:
   - collection_name
   - 向量 `ID`
-  - 向量所在的 `S3` 文件名
+  - 向量所在的 `fragment id`
   - 向量被删除向量的行号索引，从0 开始
-- 存在重复删除的情况
-  - `client 1` 在 `T1` 时刻发起删除指令 `delete v1 from t1`
-  - `client 2` 也在 `T1` 时刻发起删除指令 `delete v1 from t1`
-  - 最后可能存在两条关于 `delete v1 from t1` 的 `delete log`
-  - 重复删除不影响最后结果的正确性
 - 同一个 `flush` 块内必须为同一个`collection`的删除操作，不能混搭
   - 假设 `flush` 语句块为 : `{delete v1 from t1; delete v2 from t2;}`
   - 因为这个 `flush` 语句块同时从 `t1` 和 `t2` 删除数据，所以本次 `flush` 操作失败
