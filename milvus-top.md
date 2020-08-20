@@ -1,9 +1,16 @@
 # milvus 设计方案
-- 使用共享存储，计算与存储分离
-- `ES` 的 `replica` 是做 `HA` 的，这里的 `replica` 是做 `QPS` 的
-- 每次插入均生成一个新的文件，不是在旧文件上的追加
-- 每次合并也会生成一个新的文件，原文件并不直接删除，而是由后台程序安全的删除
-- 每次删除均生成一个新的 `delete log` 文件
+1. 使用共享存储，计算与存储分离
+2. `ES` 的 `replica` 是做 `HA` 的，这里的 `replica` 是做 `QPS` 的
+3. 所有修改操作(插入、删除、合并)均生成一个新的文件，原文件并不直接删除，而是由后台程序安全的删除
+4. `etcd` 的每次修改都会导致 `revision` 值加 `1`，并且可以查询 `key` 在指定 `revision` 下的值
+    - 插入 `k1 -> v1`，`etcd` 的 `revision` 值为 `1`
+    - 修改 `k1` 的值 `k1 -> v2`， `etcd` 的 `revision` 值为 `2`
+    - 插入 `k2 -> v3`，`etcd` 的 `revision` 值为 `3`
+    - 查询 `revision` 为 `3` 时，`k1` 的值，得到 `v2`
+    - 查询 `revision` 为 `2` 时，`k1` 的值，得到 `v2`
+    - 查询 `revision` 为 `1` 时，`k1` 的值，得到 `v1`
+5. 只有对 `etcd` 中的 `meta` 修改完成后，本次的修改操作才算成功
+6. 使用 `3 4 5` 实现 `MVCC` 多版本控制
 
 ## 前提假设
 - 同一个客户端严格保操作时序，不同客户端不保证时序
@@ -118,7 +125,7 @@
 
 ---
 
-## `Milvus` 框图
+## `Milvus` 节点
 - 每个 `Milvus` 节点都包含完整的 `meta` 信息，能够知道当前查询指令包含几个文件，这些文件分别有几个 `replica` 以及分布在哪些 `Milvus` 节点上
 - 每个 `Milvus` 节点有唯一的编号，从 `1` 开始
 - 对外提供查询服务，获得 `Milvus` 节点正在执行的任务信息，包括
@@ -196,6 +203,7 @@
   - `raw file N, column 1.N, column 2.N, column N.N` 按照行对齐
 - `fragment 2` 由多个类似 `fragment 1` 的集合合并完成，合并操作由 `Milvus` 后台自动完成
 - 一次只包含多个 `insert` 的 `flush` 操作，生成一个 `fragment`
+- 一个 `fragment` 只包含一个 `delete log` 文件
 - 每个 `fragment` 有 `fragment id`， 类型为 `uint64`， 在 `collection` 内唯一
 
 ---
