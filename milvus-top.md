@@ -182,23 +182,24 @@
 |  +---------------+                                                                                              |
 |                                                                                                                 |
 +-----------------------------------------------------------------------------------------------------------------+
-......
-
 ```
 
 - 带 `*` 的方框对应一个 `S3` 文件
 - 带 `@` 的方框对应一条 `etcd` 的 `meta`
 - `fragment 1`
-  -  `raw file` 为一个原始向量文件
+  - 未建立索引，仅包含原始向量，而且只能有一个原始向量文件
+  -  `raw file` 为原始向量文件
   - `delete log` 记录 `raw file` 被删除向量的偏移,从 `0` 开始
   - `column 1, column 2, column N` 为标量文件
   - `raw file, column 1, column 2, column N` 按照行对齐
 - `fragemtn 2`
+  - 已建立索引，只能包含一个索引文件，但是可以包含多个原始向量文件
   - `index file` 为索引文件，对应的原始向量为 `raw file 1, raw file 2, raw file 3` 的合计
   - `delete log` 记录 `index file` 被删除向量的偏移，从 `0` 开始
   - `raw file N, column 1.N, column 2.N, column N.N` 按照行对齐
 - `fragment 2` 由多个类似 `fragment 1` 的集合合并完成，合并操作由 `Milvus` 后台自动完成
-- 一次只包含多个 `insert` 的 `flush` 操作，生成一个类似 `fragment` 的集合
+- 一次只包含多个 `insert` 的 `flush` 操作，生成一个 `fragment`
+- 每个 `fragment` 有 `fragment id`， 类型为 `uint64`， 在 `collection` 内唯一
 
 ---
 
@@ -236,7 +237,6 @@
 ```
 
 - `Master` 定期的向所有的 `milvus` 节点请求心跳信号，确定 `milvus` 节点是否依然存活
-- `Milvus` 节点可以向 `Master` 节点请求其他节点的负载状态；该功能在 `Reduce`模式的插入操作中使用，如果当前`Milvus`节点的内存超过警戒线，则`Milvus` 节点向 `Master` 节点请求其它`Miluvs`节点的负载状态，然后选择一个选择一个低负载的节点，将插入数据转发到那个节点
 - `Master` 需要 `watch etcd` 的 这个 `/<user_name>/config/<Milvus-Cluster_ID>`，当有新的节点加入后会更新这个 `key`
 
 ---
@@ -248,28 +248,44 @@
   - 用户列表
     - `key` 为 `/user_list`
     - `value` 为一个 `array`，每条记录包含一个`<user_name>`
-  - `key` 对应 `S3` 的数据文件
-    - `key` 的命名格式为: `/<user_name>/<collection_name>/data/<S3_file_path>`
-    - `value` 内容包含
-      - 文件类型：索引文件，原始向量文件，标量文件,`delete log`
-      - 文件大小，单位为字节
-      - `replicas`： 插入该文件及拥有该文件 `replica` 的 `Milvus` 节点序号
-        - 负责插入文件的节点称为 `InsertNode`
-        - 其它拥有该文件 `replica` 的节点称为 `ReplicaNode`
-        - 这是个 `array`，第一个元素为 插入该文件的节点序号，后续为拥有该文件 `replica` 的节点序号
-        - 假设该文件由节点`2`插入，并且节点 `1` 和 节点 `5` 都拥有该文件的 `replica`，这这个值为 `[2,1,5]`; 该文件的 `InsertNode` 为节点`2`, `ReplicaNode` 为 节点`1`、节点`5` 
-        - 假设该文件由节点`2`插入，并且节点 `1` 和 节点 `5` 都拥有该文件的 `replica`，但是节点`1` 正在复制这个文件，并未完成，而节点`5` 已经完成复制，此时这个值为 `[2,-1,5]`
-      - 如果为标量文件，还需记录以下内容
-        - 对应的列名
-        - 当前标量文件对应的向量文件名
-      - 如果为索引文件，则需要记录所对应的原始向量文件列表，索引文件可以由多个向量文件构成
-      - 如果为合并生成的文件，则需要记录对应的原始文件列表
+  - `key` 对应一个 `delete log` 文件
+    - `key` 命名格式 : `/<user_name>/<collection_name>/delete_log/<fragment_id>`
+    - `value` 内容：
+      - `delete log` 对应的 `S3` 文件路径
+      - `replicas` : 一个列表，记录该文件的 `InsertNode` 和 `ReplicaNode`
+  - `key` 对应一个 `fragment`
+    - `key` 命名格式 : `/<user_name>/<collection_name>/data/<fragment_id>`
+    - `value` 内容:
+      - 索引类型 : `None` 或具体的索引类型；`None` 表示该 `fragment` 对应的原始向量尚未建立索引
+      - `replicas` : 一个列表，记录该文件的 `InsertNode` 和 `ReplicaNode`
+      - 按照 [逻辑存储格式](##逻辑存储格式) 所显示的`fragment`内各个文件的布局以及文件在 `S3` 上的存储路径，不包含 `delete log` 的 `S3` 文件路径
+      - 当前 `fragment` 总行数，以及总字节数目
+  - `key` 对应 `collection` 的基本信息
+    - `key` 命名格式 : `/<user_name>/<collection_name>/schema`
+    - `value`:
+      - `schema`
+      - 索引类型
+      - `next_fragment_id` :
+        - 类型 : `uint64`
+        - 初始值 : 0
+        - `Milvus` 节点每次以原子操作的方式加 `1` 获得一个 `fragment id`
+      - `num_fragments` : `fragment` 总数
+      - `num_rows` : 总行数，插入数据的总行数，包含已经删除的数据；如果需要排查删除的数据，用户需要根据 `delete log` 自行计算
   - `key` 对应属于当前用户的 `collection list`
     - `key` 命名格式为：`/<user_name>/collection_list`
     - `value` 为一个 `array`,每条记录的格式为: `<collection_name> : <create_time>, <index_type>` 按照 `<create_time>` 降序排列
   - `key` 对应属于当前用户的 `Milvus-Cluster` 属性，一个用户可以拥有多个 `Milvus-Cluster`
     - `key` 命名格式为：`/<user_name>/config/<Milvus-Cluster_ID>`
     - `value` 内容为 `json` 格式存储的 `Milvus-Cluster` 配置文件
+
+### 关于 `replicas` 属性的说明
+- 负责插入文件的节点称为该文件的 `InsertNode`
+- 其它拥有该文件 `replica` 的节点称为该文件的 `ReplicaNode`
+- `/<user_name>/<collection_name>/data/<fragment_id>` 和 `/<user_name>/<collection_name>/delete_log/<fragment_id>` 拥有 `replicas` 属性
+- `replicas` 为一个列表，第一个元素为 `InsertNode`，后续元素为 `ReplicaNode`
+- 在 `ReplicaNode` 前添加 “ `-` ” 符号表示文件正在往节点复制的过程中
+- `[2,1,5]` 表示该文件是由节点 `2` 插入的，并且在节点 `1` 和 节点`5` 上拥有备份，并且这两个备份在本次查询中是可用的
+- `[2,-1,5]` 表示该文件是由节点 `2` 插入的，并且在节点 `1` 和 节点`5` 上拥有备份，但是节点 `1` 中的备份正在复制的过程中，本次查询不可用
 
 ---
 
