@@ -730,21 +730,31 @@
 ---
 
 ## `Milvus`节点重启后需要加载的数据
+- `meta` 的 `replicas` 属性指定了当前 `fragment` 和 `delete log` 被哪个 `Milvus` 节点加载
+- 根据 `meta` 信息，重启后 `Milvus` 节点只加载属于本节点的 `fragment` 和 `delete log`
+- 如果当前 `Milvus` 节点的内存放不下所有的 `fragment` ，则按照 `collection 创建时间`,`fragment 创建时间` 两级排序，优先将最近的数据加载到内，其余数据缓存到 `Milvus` 节点的本地磁盘；如果磁盘也放不下，则不加载后续数据
 
+---
 
 ## 动态扩容量
 - 动态扩容不影响已经存在文件分布，只有后续新插入的数据能够进入新增节点
 - 动态扩容可以保证服务不暂停
 
+---
+
 ## 静态扩容
-- 静态扩容会修改文件在节点上的分布
 - 静态扩容需要暂停 `Milvus-Cluster` 服务
+- 根据 `Milvus-Cluster` 集群的整体配置，修改 `meta` 的 `replicas` 属性，只有再重启所有的 `Milvus` 节点
+
+---
 
 ## 动态更改 `num_replicas`
 - 更改配置文件的 `num_replicas`
-- 更改每个 `fragment meta` 的 `replicas` 
+- 更改每个 `fragment` 以及 `delete log` 的 `replicas`
+
+---
 
 ## 如何处理节点宕机
 - `Master` 定期向 `Milvus` 节点发送心跳信号请求，节点 `N1` 连续 `time_out_on_heart_beat` 次心跳信号超时，认为节点 `N1` 宕机
-- `N1` 宕机后， `Master` 需要将所有 `InsertNode` 为 `N1` 的所有 `meta` 信息用其中一个正在运行的 `ReplicaNode` 代替
+- `N1` 宕机后，`InsertNode` 为 `N1` 的 `fragment` 无法创建索引，也无法合并；`Master` 负责修改这些 `fragment` 的 `InsertNode`
 - 采用 `CAS` 模式修改 `meta` 的 `InsertNode`
