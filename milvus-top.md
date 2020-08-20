@@ -1,6 +1,6 @@
 # milvus 设计方案
 1. 使用共享存储，计算与存储分离
-2. `ES` 的 `replica` 是做 `HA` 的，这里的 `replica` 是做 `QPS` 的
+2. `ES` 的 `replica` 兼顾 `HA` 和 `QPS`，这里的 `replica` 只做 `QPS`
 3. 所有修改操作(插入、删除、合并)均生成一个新的文件，原文件并不直接删除，而是由后台程序安全的删除
 4. `etcd` 的每次修改都会导致 `revision` 值加 `1`，并且可以查询 `key` 在指定 `revision` 下的值
     - 插入 `k1 -> v1`，`etcd` 的 `revision` 值为 `1`
