@@ -752,7 +752,7 @@
 
 ## 静态扩容
 - 静态扩容需要暂停 `Milvus-Cluster` 服务
-- 根据 `Milvus-Cluster` 集群的整体配置，修改 `meta` 的 `replicas` 属性，只有再重启所有的 `Milvus` 节点
+- 根据 `Milvus-Cluster` 集群的整体配置，修改 `meta` 的 `replicas` 属性，再重启所有的 `Milvus` 节点
 
 ---
 
