@@ -449,8 +449,7 @@
 - `client` 收到 `flush` 操作成功或失败
 - `client` 未收到任何信息，直接超时，表示当前操作失败
 - `client` 收到 `tmp-etcd` 信息，当时未收到 `flush` 操作成功的信息，此时 `client` 需要重新链接并向 `milvus` 查询 `tmp-etcd` 是否在 `etcd` 中
-
-如果 `tmp-etcd` 对应的 `tmp-s3` 文件被合并导致 `tmp-etcd` 不存在，可能导致 `client` 重新链接时查询 `tmp-etcd` 失败；为了防止这种情况出现，文件合并后，需要在某个地方依然保存 `tmp-etcd`， 确保可以被查询到
+- 步骤`(4)`和步骤`(5)`应该被包含在 `Flush`的 `SDK` 内部，不对 `client` 暴露，`client`调用 `Flush`之后处于阻塞状态，到步骤`(7)` 才返回  
 
 ---
 
