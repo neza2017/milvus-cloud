@@ -31,7 +31,7 @@
   - C<sub>1</sub> 在本地时刻 T<sub>2</sub> 与服务端断开链接
   - 数据 D<sub>A</sub> 在服务器端被抛弃，数据 D<sub>B</sub>在服务端未被删除，依然可以被查询到
 - 只有 `insert` 和 `delete` 需要 `flush`，其它不需要,如 `create collection`,`drop collection`
-- 同一个 `flush` 块内必须为同一个操作，不能混搭
+- 同一个 `flush` 块内必须为同一种操作，不能混搭
   - 假设 `flush` 语句块为 : `{insert v1 into t1; insert v2 into t1; delete v3 from t1}`
   - 因为这个 `flush` 语句块同时包含 `insert 和  delete`，所以本次 `flush` 操作返回失败
 - 同一个 `flush` 块内必须为同一个`collection`的操作，不能混搭
