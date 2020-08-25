@@ -781,6 +781,13 @@
 
 ---
 
+## 如何处理节点宕机
+- `Master` 定期向 `Milvus` 节点发送心跳信号请求，节点 `N1` 连续 `time_out_on_heart_beat` 次心跳信号超时，认为节点 `N1` 宕机
+- `N1` 宕机后，`InsertNode` 为 `N1` 的 `fragment` 无法创建索引，也无法合并；`Master` 负责修改这些 `fragment` 的 `InsertNode`
+- 采用 `CAS` 模式修改 `meta` 的 `InsertNode`
+
+---
+
 ## 动态扩容量
 - 动态扩容不影响已经存在文件分布，只有后续新插入的数据能够进入新增节点
 - 动态扩容可以保证服务不暂停
@@ -794,20 +801,13 @@
 
 ---
 
-## 动态更改 `num_replicas`
-- 更改配置文件的 `num_replicas`
-- 更改每个 `fragment` 以及 `delete log` 的 `replicas`
-
----
-
-## 动态修改 `replicas` 属性
-- 优化策略，节点增加后，动态修改 原有数据的 `replicas` 属性，动态修改数据分布
----
-
-## 如何处理节点宕机
-- `Master` 定期向 `Milvus` 节点发送心跳信号请求，节点 `N1` 连续 `time_out_on_heart_beat` 次心跳信号超时，认为节点 `N1` 宕机
-- `N1` 宕机后，`InsertNode` 为 `N1` 的 `fragment` 无法创建索引，也无法合并；`Master` 负责修改这些 `fragment` 的 `InsertNode`
-- 采用 `CAS` 模式修改 `meta` 的 `InsertNode`
+## 动态优化
+- 优化过程中，服务器不暂停，`Client` 客户端无感知
+- 不是由 `Milvus-Cluster` 自动发起的，而是由管理员手动触发的
+- 配合扩缩容使用，动态的修改数据在节点上的分布
+- 主要包含亮方面的修改
+  - 修改配置文件的 `num_replicas`
+  - 修改 `meta` 的 `replicas` 属性
 
 ---
 
