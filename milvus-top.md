@@ -273,7 +273,7 @@
 +--------+                                   +--------+
 ```
 
-- `Master` 定期的向所有的 `milvus` 节点请求心跳信号，确定 `milvus` 节点是否依然存活
+- `Master` 定期的向所有的 `milvus` 节点请求心跳信号，确定其是否依然存活，如果节点宕机，例如 `N1`，则修改数据的 `replicas` 属性，将 `InsertNode` 从 `N1` 改为其它 `ReplicaNode` 节点
 - `Master` 需要 `watch etcd` 的 这个 `/<user_name>/config/<Milvus-Cluster_ID>`，当有新的节点加入后会更新这个 `key`
 
 ---
@@ -798,6 +798,10 @@
 - 更改配置文件的 `num_replicas`
 - 更改每个 `fragment` 以及 `delete log` 的 `replicas`
 
+---
+
+## 动态修改 `replicas` 属性
+- 优化策略，节点增加后，动态修改 原有数据的 `replicas` 属性，动态修改数据分布
 ---
 
 ## 如何处理节点宕机
