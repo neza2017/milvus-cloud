@@ -888,7 +888,6 @@ v4
 ## `Milvus`节点重启后需要加载的数据
 - `meta` 的 `replicas` 属性指定了当前 `fragment` 和 `delete log` 被哪个 `Milvus` 节点加载
 - 根据 `meta` 信息，从其它节点复制属于本节点的 `fragment` 和 `delete log`
-- 如果当前 `Milvus` 节点的内存放不下所有的 `fragment` ，则按照 `collection 创建时间`,`fragment 创建时间` 两级排序，优先将最近的数据加载到内，其余数据缓存到 `Milvus` 节点的本地磁盘；如果磁盘也放不下，则不加载后续数据
 
 ---
 
