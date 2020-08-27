@@ -13,6 +13,76 @@
 6. 使用 `3 4 5` 实现 `MVCC` 多版本控制
 7. 一个 `flush` 语句块对应一个文件，可以包含多个向量，不是一条向量一个文件
 
+---
+
+## `etcd` 的 `revision`
+```bash
+$ etcdctl --endpoints=http://127.0.0.1:10001 put k1 v1 -w json
+{"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":2,"raft_term":2}}
+$ etcdctl --endpoints=http://127.0.0.1:10001 put k2 v2 -w json
+{"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":3,"raft_term":2}}
+$ etcdctl --endpoints=http://127.0.0.1:10001 put k3 v3 -w json
+{"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":4,"raft_term":2}}
+$ etcdctl --endpoints=http://127.0.0.1:10001 put k4 v4 -w json
+{"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":5,"raft_term":2}}
+$ etcdctl --endpoints=http://127.0.0.1:10001 put k5 v5 -w json
+{"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":6,"raft_term":2}}
+$ etcdctl --endpoints=http://127.0.0.1:10001 get k --prefix
+k1
+v1
+k2
+v2
+k3
+v3
+k4
+v4
+k5
+v5
+$ etcdctl --endpoints=http://127.0.0.1:10001 del k5 -w json
+{"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":7,"raft_term":2},"deleted":1}
+$ etcdctl --endpoints=http://127.0.0.1:10001 get k --prefix
+k1
+v1
+k2
+v2
+k3
+v3
+k4
+v4
+$ etcdctl --endpoints=http://127.0.0.1:10001 get k --prefix --rev 6
+k1
+v1
+k2
+v2
+k3
+v3
+k4
+v4
+k5
+v5
+$ etcdctl --endpoints=http://127.0.0.1:10001 put k2 v22 -w json
+{"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":8,"raft_term":2}}
+$ etcdctl --endpoints=http://127.0.0.1:10001 get k2
+k2
+v22
+$ etcdctl --endpoints=http://127.0.0.1:10001 get k2 --rev 7
+k2
+v2
+$ etcdctl --endpoints=http://127.0.0.1:10001 get k --prefix --rev 7
+k1
+v1
+k2
+v2
+k3
+v3
+k4
+v4
+
+```
+
+---
+
+
 ## 前提假设
 - 同一个客户端严格保操作时序，不同客户端不保证时序
     - C<sub>1</sub> 在本地时刻 T<sub>0</sub> 发起插入操作 I<sub>0</sub>，插入数据 D<sub>A</sub>，并执行 `flush` 操作
