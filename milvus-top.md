@@ -727,7 +727,7 @@ v4
 |        |                               |    |                                  +----+             |
 |        |                               |    |                                                     |
 |        |                               |    |                                 +----+              |
-|        |                               |    | (4) old delete log on F0        | S3 |              |
+|        |                               |    | (4) old delete log on F0        | N2 |              |
 |        |                               |    <---------------------------------|    |              |
 |        |                               |    |     kDoldF0->kVoldF0            |    |              |
 |        |                               |    |                                 |    |              |
@@ -767,7 +767,7 @@ v4
   - `del13` : -1
 - `N1` 根据 `del11 del12 del13` 可以知，向量 `v0` 只在 `fragment` `F0`上
 - 获得 `r1` 下 `F0` 的 `delete log`,假设对应的 `kv` 为 `kDoldF0` -> `kVoldF0`
-- 假设 `kVoldF0` 对应的 `S3` 文件内容为 `{T0, vx, F0, Xoffset}`
+- 假设 `kVoldF0` 对应的文件内容为 `{T0, vx, F0, Xoffset}`
 - 生成新的 `delete log` 文件，内容如下
 ```txt
 {T0, vx, F0, Xoffset}
