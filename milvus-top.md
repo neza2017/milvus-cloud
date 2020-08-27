@@ -20,7 +20,7 @@ $ etcdctl --endpoints=http://127.0.0.1:10001 put k4 v4 -w json
 {"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":5,"raft_term":2}}
 $ etcdctl --endpoints=http://127.0.0.1:10001 put k5 v5 -w json
 {"header":{"cluster_id":18293669711776909085,"member_id":8241799522139745222,"revision":6,"raft_term":2}}
-$ etcdctl --endpoints=http://127.0.0.1:10001 get k --prefixq
+$ etcdctl --endpoints=http://127.0.0.1:10001 get k --prefix
 k1
 v1
 k2
