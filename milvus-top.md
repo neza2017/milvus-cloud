@@ -718,7 +718,7 @@ v4
 |        |                               |    | (3) del12 : delete v0 from F0    | N2 |             |
 |        |                               |    |---------------------------------->    |             |
 |        |                               |    |                                  |    |             |
-|        | (7) Delete Success            |    |                                  +----+             |
+|        | (8) Delete Success            |    |                                  +----+             |
 |        <-------------------------------|    |                                                     |
 |        |                               |    |                                  +----+             |
 |        |                               |    | (3) del13 : delete v0 from F2    | N3 |             |
@@ -737,16 +737,18 @@ v4
 |        |                               |    |     kDnewF0->kVnewF0            |    |              |
 |        |                               |    |                                 +----+              |
 |        |                               |    |                                                     |
+|        |                               |    |                                 +-------+           |
+|        |                               |    | (6) copy new delete log from N1 | N2 N3 |           |
+|        |                               |    |--------------------------------->       |           |
+|        |                               |    |                                 |       |           |
+|        |                               |    |                                 +-------+           |
 |        |                               |    |                                                     |
-|        |                               |    | (6) put kDnewF0->kVnewF0, replicas:[1,-2,-3]        |
+|        |                               |    | (7) put kDnewF0->kVnewF0, replicas:[1, 2, 3]        |
 |        |                               |    |-----------------------------------------------------+
 |        |                               |    |  IF value(kF0) = mF0 AND value(kDoldF0) = kVoldF0
 |        |                               |    |
-|        |                               |    |                                 +-------+
-|        |                               |    | (8) copy new delete log from N1 | N2 N3 |
-|        |                               |    |--------------------------------->       |
-|        |                               |    |                                 |       |
-+--------+                               +----+                                 +-------+
+|        |                               |    |
++--------+                               +----+
 ```
 - `client` 向 `N1` 发送删除指令`del1`，要求从 `collection` 表 `T0` 中删除主键为 `v0` 的数据
 - `N1` 从 `etcd` 获取最新 `revision` 记为 `r1`，并获得 `r1` 下 `T0` 的所有 `meta`
@@ -773,12 +775,12 @@ v4
 ```
 - 假设新生成的 `delete log` `meat` 对应的 `kv` 为 `kDnewF0` -> `kVnewF0`
 - 查询 `meta` 可以 `fragment` `F0` 当前位于节点 `N2 N3` 上,所以新生成的 `delete log` 也需要被复制到 `N2 N3` 上
-- 又因为 当前的 `delete log` 在节点 `N1` 上生成，所以 `kVnewF0` 对应的 `replicas` 属性为 `[1,-2,-3]`，表示当前文件在 `N1` 生成，但是需要被复制到 `N2 N3`
+- 向 `N2 N3` 发送复制指令，将文件 `kVnewF0`对应的文件 从 `N1` 节点复制到 `N2 N3` 节点
+- 又因为 当前的 `delete log` 在节点 `N1` 上生成，所以 `kVnewF0` 对应的 `replicas` 属性为 `[1,2,3]`，表示当前文件在 `N1` 生成, 在 `N2 N3` 存在 `replica`
 - 采用两阶段提交的方式将 `kVnewF0` 写入磁盘 并采用 `CAS` 模式更新 `meta`:
   - `IF value(kF0) = mF0 AND value(kDoldF0) = kVoldF0`
   - `THEN put kDnewF0 kVnewF0`
 - 向 `client` 发送删除操作 `del1` 执行成功 
-- 向 `N2 N3` 发送复制指令，将文件 `kVnewF0`对应的文件 从 `N1` 节点复制到 `N2 N3` 节点
 
 
 **注意事项**
@@ -795,6 +797,7 @@ v4
   - 因为这个 `flush` 语句块同时从 `t1` 和 `t2` 删除数据，所以本次 `flush` 操作失败
 - 和插入数据一样，删除数据更新 `meta` 也设计涉及到两阶段提交
 - 根据 `old delte log` 生成 `new delete log` 后，并不直接从磁盘 及 `Milvus`节点的内存中删除 `old delete log`，应为该文件可能正在被某次查询使用
+- 本设计认为删除是低频操作，所以等 `new delete log` 完全复制到 `ReplicaNode` 后才向客户端返回
 
 ---
 
