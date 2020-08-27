@@ -167,6 +167,11 @@ v4
   - 连续 `time_out_on_heart_beat` 次心跳信号返回超时，则认为对应的 `Milvus` 节点宕机
   - 在 `k8s` 环境中， 因为 `k8s` 可以帮助重启节点，所以该值可以设的比较大，因为认为失效的这段时间内，`Milvus` 节点可能正在重启过程中
 
+### 和 `HA` 相关的配置项目
+- num_nodes
+- num_replicas
+- sync_level
+
 ---
 
   
