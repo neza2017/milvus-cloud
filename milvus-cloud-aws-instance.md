@@ -78,7 +78,7 @@ mongodb 中存储的数据
 
 后台工作：
 1. 创建 aws ec2 实例
-2. 每个 aws ec2 实例和 disk 至少包含 3 个 tag : "username", "milvus-name", "miluse-username"
+2. 每个 aws ec2 实例和 disk 至少包含 4 个 tag : "username", "milvus-name", "miluse-username", "node-type"
 3. miluvs 集群的所有机器使用同一个 "subnet-id" 和 "security-groups"
 4. "sg-base" 内部包含基础的安全规则，比如允许控制台机器远程登录
 5. "sg-miluvs-test" 内部放置用户设置的，允许方位 miluvs 实例的机器 ip 地址白名单
