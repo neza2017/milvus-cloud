@@ -45,7 +45,6 @@ mongodb 中存储的数据
     "milvus-name" : "search-cats",
     "milvus-url" : "ec2-52-82-52-246.cn-northwest-1.compute.amazonaws.com.cn",
     "milvus-port" : "19530",
-    "milvus-em-port" : "19531",
     "milvus-type" : "M5",
     "subnet-id" : "subnet-64b1090d",
     "security-groups" : [
