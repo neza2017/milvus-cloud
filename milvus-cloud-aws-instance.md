@@ -12,7 +12,6 @@
 `request`
 ```json
 {
-    "session-token" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "username" : "milvus-test",
     "milvus-name": "search-cats",
     "milvus-type" : "M5",
@@ -20,21 +19,21 @@
 }
 ```
 
+使用 `HTTP` 的返回码表示当前请求是否成功，返回码在 `HTTP` 请求的头部
+
 `response` on success
 ```json
 {
-    "status" : "success",
     "milvs-name" : "search-cats",
     "milvus-url" : "ec2-52-82-52-246.cn-northwest-1.compute.amazonaws.com.cn",
     "milvus-port" : "19530",
-    "milvus-em-port" : "19531"
 }
 ```
 
 `response` on failed
 ```json
 {
-    "status" : "failed",
+    "reason" : "the reason of failed",
     "description" : "can't create aws instances"
 }
 ```
@@ -61,6 +60,7 @@ mongodb 中存储的数据
         {
             "node-type" : "master",
             "instance-id" : "i-00879b91cf475a597",
+            "status" : "starting",
             "key-pair" : "zilliz-hz02",
             "public-ip" : "52.82.52.246",
             "private-ip" : "172.31.9.114",
@@ -68,6 +68,7 @@ mongodb 中存储的数据
         {
             "node-type" : "worker",
             "instance-id" : "i-0102e93a4413df1ba",
+            "status" : "loading",
             "key-pair" : "zilliz-hz02",
             "public-ip" : "3.12.47.200",
             "private-ip" : "172.31.9.115",
@@ -82,6 +83,7 @@ mongodb 中存储的数据
 3. miluvs 集群的所有机器使用同一个 "subnet-id" 和 "security-groups"
 4. "sg-base" 内部包含基础的安全规则，比如允许控制台机器远程登录
 5. "sg-miluvs-test" 内部放置用户设置的，允许方位 miluvs 实例的机器 ip 地址白名单
+6. instances.status 一共有四中状态: `starting`, 启动 aws 实例； `loading`, 安装 miluvs; `running`, 安装完成，可以对外提供服务; `failed` : 实例启动失败，需要被删除
 
 
 ## 设置白名单
@@ -89,7 +91,6 @@ mongodb 中存储的数据
 `request`
 ```json
 {
-    "session-token" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "username" : "milvus-test",
     "milvus-name": "search-cats",
     "ip-ranges" : [
@@ -105,19 +106,32 @@ mongodb 中存储的数据
     ]
 }
 ```
-"port-type" 设置向用户开放的端口，可选值为 "miluvs-port", "milvus-em-port"
+"port-type" 设置向用户开放的端口，可选值为 "miluvs-port"
+
+使用 `HTTP` 的返回码表示当前请求是否成功，返回码在 `HTTP` 请求的头部
+
 
 `response` on success
 ```json
 {
-    "status" : "success",
+    "ip-ranges" : [
+        {
+            "source-ip" : "115.236.166.154/32",
+            "port-type" : "miluvs-port"
+        }
+
+        {
+            "source-ip" : "115.236.166.154/32",
+            "port-type" : "miluvs-em-port"
+        }
+    ]
 }
 ```
 
 `response` on faied
 ```json
 {
-    "status" : "failed",
-   "description" : "unsported port-type"
+    "reason" : "the reason of failed",
+    "description" : "can't create aws instances"
 }
 ```
