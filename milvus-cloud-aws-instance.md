@@ -7,12 +7,12 @@
 4. 直接对用户暴露 aws 实例
 5. 用户必须首先设置访问白名单，才能访问 aws 上的 miluvs 实例
 6. miluvs 客户端不需要做任何修改
+7. username 放在 http 请求的 header 内
 
 ## 创建 miluvs 实例
 `request`
 ```json
 {
-    "username" : "milvus-test",
     "milvus-name": "search-cats",
     "milvus-type" : "M5",
     "disk-size" : 50
@@ -90,7 +90,6 @@ mongodb 中存储的数据
 `request`
 ```json
 {
-    "username" : "milvus-test",
     "milvus-name": "search-cats",
     "ip-ranges" : [
         {
