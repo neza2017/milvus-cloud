@@ -85,6 +85,34 @@ mongodb 中存储的数据
 6. instances.status 一共有四中状态: `starting`, 启动 aws 实例； `loading`, 安装 miluvs; `running`, 安装完成，可以对外提供服务; `failed` : 实例启动失败，需要被删除
 
 
+## 删除 milvus 实例
+
+`request`
+```json
+{
+    "milvus-name": "search-cats",
+}
+```
+
+使用 `HTTP` 的返回码表示当前请求是否成功，返回码在 `HTTP` 请求的头部
+
+`response` on success
+```json
+{
+    "milvs-name" : "search-cats",
+    "milvus-url" : "ec2-52-82-52-246.cn-northwest-1.compute.amazonaws.com.cn",
+    "milvus-port" : "19530",
+}
+```
+
+`response` on failed
+```json
+{
+    "reason" : "the reason of failed",
+    "description" : "can't create aws instances"
+}
+```
+
 ## 设置白名单
 白名单的规则放置在 "sg-miluvs-test" 内
 `request`
