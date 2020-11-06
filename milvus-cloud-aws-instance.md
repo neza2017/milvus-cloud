@@ -161,3 +161,12 @@ mongodb 中存储的数据
     "description" : "can't create aws instances"
 }
 ```
+
+## 获得 ip 地址白名单
+
+`request`
+```json
+{
+    "milvs-name" : "search-cats"
+}
+```
